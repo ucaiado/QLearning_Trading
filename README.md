@@ -15,9 +15,9 @@ This project requires **Python 2.7** and the following Python libraries installe
 
 ### Reference
 1. T.M. Mitchell.  *Machine  Learning*.   McGraw-Hill International Editions, 1997. [*link*](http://www.cs.cmu.edu/afs/cs.cmu.edu/user/mitchell/ftp/mlbook.html)
-2. Udacity. *Original Project Repository*. 2016. [*link*](https://github.com/udacity/machine-learning/tree/master/projects/smartcab)
-3. M. Mohri, A. Rostamizadeh, A. Talwalkar. *Foundations of Machine Learning*. 2012. [*link*](https://mitpress.mit.edu/books/foundations-machine-learning)
-4. L.P. Kaelbling, M.L. Littman, A.W. Moore. *Reinforcement Learning: A Survey*. 1996. [*link*](https://www.jair.org/media/301/live-301-1562-jair.pdf)
+2. M. Mohri, A. Rostamizadeh, A. Talwalkar. *Foundations of Machine Learning*. 2012. [*link*](https://mitpress.mit.edu/books/foundations-machine-learning)
+3. N.T. Chan, C.R. Shelton.  *An Electronic Market-Maker*. 2001 [*link*](ftp://publications.ai.mit.edu/ai-publications/2001/AIM-2001-005.pdf)
+4. N.T. Chan.  *Artificial Markets and Intelligent Agents*. 2001 [*link*](http://cbcl.mit.edu/cbcl/publications/theses/thesis-chan.pdf)
 
 
 ### License
