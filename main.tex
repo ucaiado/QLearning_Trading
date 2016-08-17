@@ -5,9 +5,18 @@
 \usepackage{amsmath}
 \usepackage{graphicx}
 \usepackage[colorinlistoftodos]{todonotes}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage[numbers]{natbib}
+\usepackage{babel,blindtext}
 
-\title{Your Paper}
-\author{You}
+\usepackage{algorithm}
+\usepackage[noend]{algpseudocode}
+
+\usepackage{booktabs} % To thicken table lines
+
+\title{Trading Using Q-Learning}
+\author{Uirá Caiado}
 
 \begin{document}
 \maketitle
@@ -16,9 +25,18 @@
 Your abstract.
 \end{abstract}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% INTRODUCTION
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 \section{Introduction}
 
 Your introduction goes here! Some examples of commonly used commands and features are listed below, to help you get started. If you have a question, please use the help menu (``?'') on the top bar to search for help or ask us a question. 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% BLA
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 
 \section{Some examples to get started}
 
@@ -40,9 +58,9 @@ Comments can be added to your project by clicking on the comment icon in the too
 %
 To reply to a comment, simply click the reply button in the lower right corner of the comment, and you can close them when you're done.
 
-Comments can also be added to the margins of the compiled PDF using the todo command, \todo{Here's a comment in the margin!} as shown in the example on the right. You can also add inline comments:
+Comments can also be added to the margins of the compiled PDF using the todo command, as shown in the example on the right. You can also add inline comments:
 
-\todo[inline, color=green!40]{This is an inline comment.}
+
 
 \subsection{How to add Tables}
 
@@ -86,4 +104,23 @@ You can make lists with automatic numbering \dots
 
 We hope you find Overleaf useful, and please let us know if you have any feedback using the help menu above.
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% CONCLUSION
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Conclusion}
+\label{sec:conclusion}
+In this section, ...
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% REFLECTION
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Reflection}
+\label{sec:reflection}
+Something really \cite{Mohri_2012}
+
+\bibliographystyle{plain}
+% or try abbrvnat or unsrtnat
+\bibliography{bibliography/biblio.bib}
 \end{document}
