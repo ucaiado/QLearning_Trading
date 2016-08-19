@@ -66,7 +66,7 @@ class BasicAgent(Agent):
     def __init__(self, env):
         '''
         Initialize a BasicLearningAgent. Save all parameters as attributes
-        :param env: Environment object. The grid-like world
+        :param env: Environment object. The Market
         '''
         # sets self.env = env, state = None, next_waypoint = None, and a
         # default color

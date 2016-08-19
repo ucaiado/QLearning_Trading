@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 """
-Implement a simulator to mimic a dybamic order book environment
+Implement a simulator to mimic a dynamic order book environment
 
 @author: ucaiado
 

@@ -37,15 +37,164 @@ class InvalidTypeException(Exception):
     pass
 
 
-def open_file(s_fname):
-    '''
-    Open a Zipped file and return the archice (zip object) and the file opened
-    :param s_fname: string. path to the zipped file
-    '''
-    archive = zipfile.ZipFile(s_fname, 'r')
-    fr = archive.open(archive.infolist()[0])
-    return fr, archive
-
 '''
 End help functions
 '''
+
+
+class Order(object):
+    '''
+    A representation of a single Order
+    '''
+    def __init__(self, d_msg):
+        '''
+        Instantiate a Order object. Save all parameter as attributes
+        :param d_msg: dictionary.
+        '''
+        # keep data extract from file
+        self.d_msg = d_msg.copy()
+        self.d_msg['org_total_qty_order'] = self.d_msg['total_qty_order']
+        f_q1 = self.d_msg['total_qty_order']
+        f_q2 = self.d_msg['traded_qty_order']
+        self.d_msg['total_qty_order'] = f_q1 - f_q2
+        self.order_id = d_msg['order_id']
+        self.last_order_id = d_msg['last_order_id']
+        self.name = "{:07d}".format(d_msg['order_id'])
+        self.main_id = self.order_id
+
+    def __str__(self):
+        '''
+        Return the name of the Order
+        '''
+        return self.name
+
+    def __repr__(self):
+        '''
+        Return the name of the Order
+        '''
+        return self.name
+
+    def __eq__(self, other):
+        '''
+        Return if a Order has equal order_id from the other
+        :param other: Order object. Order to be compared
+        '''
+        return self.order_id == other.order_id
+
+    def __ne__(self, other):
+        '''
+        Return if a Order has different order_id from the other
+        :param other: Order object. Order to be compared
+        '''
+        return not self.__eq__(other)
+
+    def __hash__(self):
+        '''
+        Allow the Order object be used as a key in a hash table. It is used by
+        dictionaries
+        '''
+        return self.order_id.__hash__()
+
+    def __getitem__(self, s_key):
+        '''
+        Allow direct access to the inner dictionary of the object
+        :param i_index: integer. index of the l_legs attribute list
+        '''
+        return self.d_msg[s_key]
+
+
+class PriceLevel(object):
+    '''
+    A representation of a Price level in the book
+    '''
+    def __init__(self, f_price):
+        '''
+        A representation of a PriceLevel object
+        '''
+        self.f_price = f_price
+        self.i_qty = 0
+        self.order_tree = FastRBTree()
+
+    def add(self, order_aux):
+        '''
+        Insert the information in the tree using the info in order_aux. Return
+        is should delete the Price level or not
+        :param order_aux: Order Object. The Order message to be updated
+        '''
+        # check if the order_aux price is the same of the self
+        if order_aux['order_price'] != self.f_price:
+            raise DifferentPriceException
+        elif order_aux['order_status'] == 'limit':
+            self.order_tree.insert(order_aux.main_id, order_aux)
+            self.i_qty += int(order_aux['total_qty_order'])
+        # check if there is no object in the updated tree (should be deleted)
+        return self.order_tree.count == 0
+
+    def delete(self, i_last_id, i_old_qty):
+        '''
+        Delete the information in the tree using the info in order_aux. Return
+        is should delete the Price level or not
+        :param i_last_id: Integer. The previous secondary order id
+        :param i_old_qty: Integer. The previous order qty
+        '''
+        # check if the order_aux price is the same of the self
+        try:
+            self.order_tree.remove(i_last_id)
+            self.i_qty -= i_old_qty
+        except KeyError:
+            raise DifferentPriceException
+        # check if there is no object in the updated tree (should be deleted)
+        return self.order_tree.count == 0
+
+    def __str__(self):
+        '''
+        Return the name of the PriceLevel
+        '''
+        return '{:,.0f}'.format(self.i_qty)
+
+    def __repr__(self):
+        '''
+        Return the name of the PriceLevel
+        '''
+        return '{:,.0f}'.format(self.i_qty)
+
+    def __eq__(self, other):
+        '''
+        Return if a PriceLevel has equal price from the other
+        :param other: PriceLevel object. PriceLevel to be compared
+        '''
+        # just to make sure that there is no floating point discrepance
+        f_aux = other
+        if not isinstance(other, float):
+            f_aux = other.f_price
+        return abs(self.f_price - f_aux) < 1e-4
+
+    def __gt__(self, other):
+        '''
+        Return if a PriceLevel has a gerater price from the other.
+        Bintrees uses that to compare nodes
+        :param other: PriceLevel object. PriceLevel to be compared
+        '''
+        # just to make sure that there is no floating point discrepance
+        f_aux = other
+        if not isinstance(other, float):
+            f_aux = other.f_price
+        return (f_aux - self.f_price) > 1e-4
+
+    def __lt__(self, other):
+        '''
+        Return if a Order has smaller order_id from the other. Bintrees uses
+        that to compare nodes
+        :param other: Order object. Order to be compared
+        '''
+        f_aux = other
+        if not isinstance(other, float):
+            f_aux = other.f_price
+        return (f_aux - self.f_price) < -1e-4
+
+    def __ne__(self, other):
+        '''
+        Return if a Order has different order_id from the other
+        :param other: Order object. Order to be compared
+        '''
+        return not self.__eq__(other)
