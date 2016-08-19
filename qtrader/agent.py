@@ -71,3 +71,26 @@ class BasicAgent(Agent):
         # sets self.env = env, state = None, next_waypoint = None, and a
         # default color
         super(BasicAgent, self).__init__(env)
+
+
+def run():
+    """
+    Run the agent for a finite number of trials.
+    """
+    # Set up environment and agent
+    e = Environment()  # create environment (also adds some dummy traffic)
+    a = e.create_agent(BasicAgent)  # create agent
+    e.set_primary_agent(a, enforce_deadline=True)  # specify agent to track
+
+    # Now simulate it
+    # create simulator (uses pygame when display=True, if available)
+    sim = Simulator(e, update_delay=0.01, display=False)
+    sim.run(n_trials=100)  # run for a specified number of trials
+
+    # save the Q table of the primary agent
+    save_q_table(e)
+
+
+if __name__ == '__main__':
+    # run the code
+    run()

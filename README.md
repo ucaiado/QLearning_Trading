@@ -1,7 +1,7 @@
 Trading Using Q-Learning
 ==================
 
-In this project, I will will use reinforcement learning framework to train an agent to trade. This project is part of the [Machine Learning Engineer Nanodegree](https://www.udacity.com/course/machine-learning-engineer-nanodegree--nd009) program, from Udacity. You can check my report <a href="" target="_blank">here</a> and the notebook with the tests of the codes used in this project <a href="http://nbviewer.jupyter.org/github/ucaiado/QLearning_Trading/blob/66600448c8b957fd9cfaeb41a170b0365eef71d3/learning_trade.ipynb" target="_blank">here</a>. The TEX file was produced with help of [Overleaf]().
+In this project, I will will use reinforcement learning framework to train an agent to trade. This project is part of the [Machine Learning Engineer Nanodegree](https://www.udacity.com/course/machine-learning-engineer-nanodegree--nd009) program, from Udacity. You can check my report <a href="https://www.dropbox.com/s/tnwkztqmozys1h4/trading-q-learning.pdf?dl=0" target="_blank">here</a> and the notebook with the tests of the codes used in this project <a href="http://nbviewer.jupyter.org/github/ucaiado/QLearning_Trading/blob/66600448c8b957fd9cfaeb41a170b0365eef71d3/learning_trade.ipynb" target="_blank">here</a>. The TEX file was produced with help of [Overleaf](https://www.overleaf.com/read/mmzwqfbrkdvf).
 
 
 ### Install
@@ -11,6 +11,7 @@ This project requires **Python 2.7** and the following Python libraries installe
 - [NumPy](http://www.numpy.org/)
 - [Pandas](http://pandas.pydata.org)
 - [Seaborn](https://web.stanford.edu/~mwaskom/software/seaborn/)
+- [Bintrees](https://pypi.python.org/pypi/bintrees/2.0.2)
 
 
 ### Reference
