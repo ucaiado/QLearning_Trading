@@ -11,8 +11,6 @@ Created on 08/19/2016
 from bintrees import FastRBTree
 import numpy as np
 import pandas as pd
-import parser_data
-import zipfile
 
 
 '''
@@ -122,9 +120,10 @@ class PriceLevel(object):
         :param order_aux: Order Object. The Order message to be updated
         '''
         # check if the order_aux price is the same of the self
+        s_status = order_aux['order_status']
         if order_aux['order_price'] != self.f_price:
             raise DifferentPriceException
-        elif order_aux['order_status'] == 'limit':
+        elif s_status in ['New', 'Replaced', 'Partially Filled']:
             self.order_tree.insert(order_aux.main_id, order_aux)
             self.i_qty += int(order_aux['total_qty_order'])
         # check if there is no object in the updated tree (should be deleted)
@@ -198,3 +197,333 @@ class PriceLevel(object):
         :param other: Order object. Order to be compared
         '''
         return not self.__eq__(other)
+
+
+class BookSide(object):
+    '''
+    A side of the lmit order book representation
+    '''
+    def __init__(self, s_side):
+        '''
+        Initialize a BookSide object. Save all parameters as attributes
+        :param s_side: string. BID or ASK
+        '''
+        if s_side not in ['BID', 'ASK']:
+            raise InvalidTypeException('side should be BID or ASK')
+        self.s_side = s_side
+        self.price_tree = FastRBTree()
+        self._i_idx = 0
+        self.d_order_map = {}
+        self.last_price = 0.
+
+    def update(self, d_data):
+        '''
+        Update the state of the order book given the data pased. Return if the
+        message was handle successfully
+        :param d_data: dict. data related to a single order
+        '''
+        # update the book information
+        order_aux = Order(d_data)
+        s_status = order_aux['order_status']
+        b_sould_update = True
+        b_success = True
+        # check the order status
+        if s_status != 'New':
+            try:
+                i_old_id = self.d_order_map[order_aux]['main_id']
+            except KeyError:
+                if s_status == 'Canceled' or s_status == 'Filled':
+                    b_sould_update = False
+                    s_status = 'Invalid'
+                elif s_status == 'Replaced':
+                    s_status = 'New'
+        # process the message
+        if s_status == 'New':
+            b_sould_update = self._new_order(order_aux)
+        elif s_status != 'Invalid':
+            i_old_id = self.d_order_map[order_aux]['main_id']
+            f_old_pr = self.d_order_map[order_aux]['price']
+            i_old_q = self.d_order_map[order_aux]['qty']
+            # hold the last traded price
+            if s_status in ['Partially Filled', 'Filled']:
+                self.last_price = order_aux['order_price']
+            # process message
+            if s_status in ['Canceled', 'Expired', 'Filled']:
+                b_sould_update = self._canc_expr_filled_order(order_aux,
+                                                              i_old_id,
+                                                              f_old_pr,
+                                                              i_old_q)
+                if not b_sould_update:
+                    b_success = False
+            elif s_status == 'Replaced':
+                b_sould_update = self._replaced_order(order_aux,
+                                                      i_old_id,
+                                                      f_old_pr,
+                                                      i_old_q)
+            elif s_status == 'Partially Filled':
+                b_sould_update = self._partially_filled(order_aux,
+                                                        i_old_id,
+                                                        f_old_pr,
+                                                        i_old_q)
+        # remove from order map
+        if s_status not in ['New', 'Invalid']:
+            self.d_order_map.pop(order_aux)
+        # update the order map
+        if b_sould_update:
+            f_qty = int(order_aux['total_qty_order'])
+            self.d_order_map[order_aux] = {}
+            self.d_order_map[order_aux]['price'] = d_data['order_price']
+            self.d_order_map[order_aux]['order_id'] = order_aux.order_id
+            self.d_order_map[order_aux]['qty'] = f_qty
+            self.d_order_map[order_aux]['main_id'] = order_aux.main_id
+
+        # return that the update was done
+        return True
+
+    def _canc_expr_filled_order(self, order_obj, i_old_id, f_old_pr, i_old_q):
+        '''
+        Update price_tree when passed canceled, expried or filled orders
+        :param order_obj: Order Object. The last order in the file
+        :param i_old_id: integer. Old id of the order_obj
+        :param f_old_pr: float. Old price of the order_obj
+        :param i_old_q: integer. Old qty of the order_obj
+        '''
+        this_price = self.price_tree.get(f_old_pr)
+        if this_price.delete(i_old_id, i_old_q):
+            self.price_tree.remove(f_old_pr)
+        # remove from order map
+        return False
+
+    def _replaced_order(self, order_obj, i_old_id, f_old_pr, i_old_q):
+        '''
+        Update price_tree when passed replaced orders
+        :param order_obj: Order Object. The last order in the file
+        :param i_old_id: integer. Old id of the order_obj
+        :param f_old_pr: float. Old price of the order_obj
+        :param i_old_q: integer. Old qty of the order_obj
+        '''
+        # remove from the old price
+        this_price = self.price_tree.get(f_old_pr)
+        if this_price.delete(i_old_id, i_old_q):
+            self.price_tree.remove(f_old_pr)
+
+        # insert in the new price
+        f_price = order_obj['order_price']
+        if not self.price_tree.get(f_price):
+            self.price_tree.insert(f_price, PriceLevel(f_price))
+        # insert the order in the due price
+        this_price = self.price_tree.get(f_price)
+        this_price.add(order_obj)
+        return True
+
+    def _partially_filled(self, order_obj, i_old_id, f_old_pr, i_old_q):
+        '''
+        Update price_tree when passed partially filled orders
+        :param order_obj: Order Object. The last order in the file
+        :param i_old_id: integer. Old id of the order_obj
+        :param f_old_pr: float. Old price of the order_obj
+        :param i_old_q: integer. Old qty of the order_obj
+        '''
+        # delete old price, if it is needed
+        this_price = self.price_tree.get(f_old_pr)
+        if this_price.delete(i_old_id, i_old_q):
+            self.price_tree.remove(f_old_pr)
+
+        # add/modify order
+        # insert in the new price
+        f_price = order_obj['order_price']
+        if not self.price_tree.get(f_price):
+            self.price_tree.insert(f_price, PriceLevel(f_price))
+        this_price = self.price_tree.get(f_price)
+        this_price.add(order_obj)
+        return True
+
+    def _new_order(self, order_obj):
+        '''
+        Update price_tree when passed new orders
+        :param order_obj: Order Object. The last order in the file
+        '''
+        # if it was already in the order map
+        if order_obj in self.d_order_map:
+            i_old_sec_id = self.d_order_map[order_obj]['main_id']
+            f_old_price = self.d_order_map[order_obj]['price']
+            i_old_qty = self.d_order_map[order_obj]['qty']
+            this_price = self.price_tree.get(f_old_price)
+            # remove from order map
+            self.d_order_map.pop(order_obj)
+            if this_price.delete(i_old_sec_id, i_old_qty):
+                self.price_tree.remove(f_old_price)
+        # insert a empty price level if it is needed
+        f_price = order_obj['order_price']
+        if not self.price_tree.get(f_price):
+            self.price_tree.insert(f_price, PriceLevel(f_price))
+        # add the order
+        this_price = self.price_tree.get(f_price)
+        this_price.add(order_obj)
+
+        return True
+
+    def get_n_top_prices(self, n):
+        '''
+        Return a dataframe with the N top price levels
+        :param n: integer. Number of price levels desired
+        '''
+        raise NotImplementedError
+
+    def get_n_botton_prices(self, n=5):
+        '''
+        Return a dataframe with the N botton price levels
+        :param n: integer. Number of price levels desired
+        '''
+        raise NotImplementedError
+
+
+class BidSide(BookSide):
+    '''
+    The BID side of the limit order book representation
+    '''
+    def __init__(self):
+        '''
+        Initialize a BidSide object.
+        '''
+        super(BidSide, self).__init__('BID')
+
+    def get_n_top_prices(self, n, b_return_dataframe=True):
+        '''
+        Return a dataframe with the N top price levels
+        :param n: integer. Number of price levels desired
+        :param b_return_dataframe: boolean. If should return a dataframe
+        '''
+        t_rtn = self.price_tree.nlargest(n)
+        if not b_return_dataframe:
+            return t_rtn
+        df_rtn = pd.DataFrame(t_rtn)
+        df_rtn.columns = ['PRICE', 'QTY']
+        return df_rtn
+
+    def get_n_botton_prices(self, n, b_return_dataframe=True):
+        '''
+        Return a dataframe with the N botton price levels
+        :param n: integer. Number of price levels desired
+        :param b_return_dataframe: boolean. If should return a dataframe
+        '''
+        t_rtn = self.price_tree.nsmallest(n)
+        if not b_return_dataframe:
+            return t_rtn
+        df_rtn = pd.DataFrame(t_rtn)
+        df_rtn.columns = ['PRICE', 'QTY']
+        return df_rtn
+
+
+class AskSide(BookSide):
+    '''
+    The ASK side of the limit order book representation
+    '''
+    def __init__(self):
+        '''
+        Initialize a AskSide object.
+        '''
+        super(AskSide, self).__init__('ASK')
+
+    def get_n_top_prices(self, n, b_return_dataframe=True):
+        '''
+        Return a dataframe with the N top price levels
+        :param n: integer. Number of price levels desired
+        :param b_return_dataframe: boolean. If should return a dataframe
+        '''
+        t_rtn = self.price_tree.nsmallest(n)
+        if not b_return_dataframe:
+            return t_rtn
+        df_rtn = pd.DataFrame(t_rtn)
+        df_rtn.columns = ['PRICE', 'QTY']
+        return df_rtn
+
+    def get_n_botton_prices(self, n, b_return_dataframe=True):
+        '''
+        Return a dataframe with the N botton price levels
+        :param n: integer. Number of price levels desired
+        :param b_return_dataframe: boolean. If should return a dataframe
+        '''
+        t_rtn = self.price_tree.nlargest(n)
+        if not b_return_dataframe:
+            return t_rtn
+        df_rtn = pd.DataFrame(t_rtn)
+        df_rtn.columns = ['PRICE', 'QTY']
+        return df_rtn
+
+
+class LimitOrderBook(object):
+    '''
+    A limit Order book representation. Keep the book sides synchronized
+    '''
+    def __init__(self, s_instrument):
+        '''
+        Initialize a LimitOrderBook object. Save all parameters as attributes
+        :param s_instrument: string. name of the instrument of book
+        '''
+        # initiate attributes
+        self.book_bid = BidSide()
+        self.book_ask = AskSide()
+        self.s_instrument = s_instrument
+        self.f_time = 0
+        self.s_time = ''
+        self.stop_iteration = False
+        self.stop_time = None
+        # initiate control variables
+        self.d_bid = {}  # hold the last information get from the file
+        self.d_ask = {}  # hold the last information get from the file
+        # initiate loop control variables
+        self.i_read_bid = True
+        self.i_read_ask = True
+        self.i_get_new_bid = True
+        self.i_get_new_ask = True
+        self.i_sec_bid_greatter = True
+        # best prices tracker
+        self.f_top_bid = None
+        self.f_top_ask = None
+
+    def get_n_top_prices(self, n):
+        '''
+        Return a dataframe with the n top prices of the current order book
+        :param n: integer. Number of price levels desired
+        '''
+        t_rtn1 = self.book_bid.get_n_top_prices(n, b_return_dataframe=False)
+        t_rtn2 = self.book_ask.get_n_top_prices(n, b_return_dataframe=False)
+        df1 = pd.DataFrame(t_rtn1, columns=['Bid', 'qBid'])
+        df2 = pd.DataFrame(t_rtn2, columns=['Ask', 'qAsk'])
+        df1 = df1.reset_index(drop=True)
+        df2 = df2.reset_index(drop=True)
+        df_rtn = df1.join(df2)
+        df_rtn = df_rtn.ix[:, ['qBid', 'Bid', 'Ask', 'qAsk']]
+
+        return df_rtn
+
+    def get_basic_stats(self):
+        '''
+        Return the number of price levels and number of orders remain in the
+        dictionaries and trees
+        '''
+        i_n_order_bid = len(self.book_bid.d_order_map.keys())
+        i_n_order_ask = len(self.book_ask.d_order_map.keys())
+        i_n_price_bid = len([x for x in self.book_bid.price_tree.keys()])
+        i_n_price_ask = len([x for x in self.book_ask.price_tree.keys()])
+        i_n_order_bid, i_n_order_ask, i_n_price_bid, i_n_price_ask
+        d_rtn = {'n_order_bid': i_n_order_bid,
+                 'n_order_ask': i_n_order_ask,
+                 'n_price_bid': i_n_price_bid,
+                 'n_price_ask': i_n_price_ask}
+        return d_rtn
+
+    def update(self, d_data):
+        '''
+        Update the book based on the message passed
+        d_data: dictionary. Last message from the Environment
+        '''
+        # check if should stop iteration
+        if d_data['order_side'] == 'BID':
+            self.d_bid = d_data.copy()
+            return self.book_bid.update(d_data)
+        elif d_data['order_side'] == 'ASK':
+            self.d_ask = d_data.copy()
+            return self.book_ask.update(d_data)
+        return False
