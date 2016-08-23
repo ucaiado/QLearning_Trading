@@ -469,6 +469,7 @@ class LimitOrderBook(object):
         self.s_time = ''
         self.stop_iteration = False
         self.stop_time = None
+        self.i_last_order_id = 0
         # initiate control variables
         self.d_bid = {}  # hold the last information get from the file
         self.d_ask = {}  # hold the last information get from the file

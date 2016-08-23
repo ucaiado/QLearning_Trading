@@ -254,7 +254,6 @@ class Agent(object):
         self.env = env
         self.state = None
         self.next_waypoint = None
-        self.color = 'cyan'
 
     def reset(self, destination=None):
         pass
