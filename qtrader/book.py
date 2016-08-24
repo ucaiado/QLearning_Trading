@@ -56,7 +56,16 @@ class Order(object):
         f_q2 = self.d_msg['traded_qty_order']
         self.d_msg['total_qty_order'] = f_q1 - f_q2
         self.order_id = d_msg['order_id']
-        self.last_order_id = d_msg['last_order_id']
+        self.new_order_id = d_msg['new_order_id']
+        self.name = "{:07d}".format(d_msg['order_id'])
+        self.main_id = self.order_id
+
+    def update_id(self):
+        '''
+        Change the IDs attributes to the new one
+        '''
+        self.d_msg['order_id'] = d_msg['new_order_id']
+        self.order_id = d_msg['order_id']
         self.name = "{:07d}".format(d_msg['order_id'])
         self.main_id = self.order_id
 
@@ -345,7 +354,7 @@ class BookSide(object):
         '''
         # if it was already in the order map
         if order_obj in self.d_order_map:
-            i_old_sec_id = self.d_order_map[order_obj]['main_id']
+            i_old_sec_id = self.d_order_map[order_obj]['last_order_id']
             f_old_price = self.d_order_map[order_obj]['price']
             i_old_qty = self.d_order_map[order_obj]['qty']
             this_price = self.price_tree.get(f_old_price)
@@ -353,6 +362,7 @@ class BookSide(object):
             self.d_order_map.pop(order_obj)
             if this_price.delete(i_old_sec_id, i_old_qty):
                 self.price_tree.remove(f_old_price)
+
         # insert a empty price level if it is needed
         f_price = order_obj['order_price']
         if not self.price_tree.get(f_price):
@@ -556,6 +566,7 @@ class LimitOrderBook(object):
         d_data: dictionary. Last message from the Environment
         '''
         # check if should stop iteration
+        self.i_last_order_id = max(self.i_last_order_id, d_data['order_id'])
         if d_data['order_side'] == 'BID':
             self.d_bid = d_data.copy()
             return self.book_bid.update(d_data)
