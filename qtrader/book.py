@@ -499,6 +499,41 @@ class LimitOrderBook(object):
 
         return df_rtn
 
+    def get_best_price(self, s_side):
+        '''
+        Return the best price of the specified side
+        :param s_side: string. The side of the book
+        '''
+        if s_side == 'BID':
+            obj_aux = self.book_bid.get_n_top_prices(1, False)
+            if obj_aux:
+                return obj_aux[0][0]
+        elif s_side == 'ASK':
+            obj_aux = self.book_ask.get_n_top_prices(1, False)
+            if obj_aux:
+                return obj_aux[0][0]
+
+    def get_orders_by_price(self, s_side, f_price=None):
+        '''
+        Recover the orders from a specific price level
+        :param s_side: string. The side of the book
+        :*param f_price: float. The price level desired. If not set, return
+            the best price
+        '''
+        # side of the order book
+        obj_price = None
+        if s_side == 'BID':
+            if not f_price:
+                f_price = self.get_best_price(s_side)
+            obj_price = self.book_bid.price_tree.get(f_price)
+        elif s_side == 'ASK':
+            if not f_price:
+                f_price = self.get_best_price(s_side)
+            obj_price = self.book_ask.price_tree.get(f_price)
+        # return the order tree
+        if obj_price:
+            return obj_price.order_tree
+
     def get_basic_stats(self):
         '''
         Return the number of price levels and number of orders remain in the
