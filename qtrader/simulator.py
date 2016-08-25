@@ -12,6 +12,7 @@ import time
 import random
 import importlib
 import logging
+import curses
 
 # global variable
 DEBUG = False
