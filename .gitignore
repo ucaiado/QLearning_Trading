@@ -5,6 +5,7 @@ __pycache__/
 
 # others
 .directory
+.DS_store
 
 # C extensions
 *.so
