@@ -543,7 +543,7 @@ class LimitOrderBook(object):
             obj_price = self.book_ask.price_tree.get(f_price)
         # return the order tree
         if obj_price:
-            if b_rtnobj:
+            if b_rtn_obj:
                 return obj_price
             return obj_price.order_tree
 
