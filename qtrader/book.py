@@ -523,12 +523,13 @@ class LimitOrderBook(object):
             if obj_aux:
                 return obj_aux[0][0]
 
-    def get_orders_by_price(self, s_side, f_price=None):
+    def get_orders_by_price(self, s_side, f_price=None, b_rtn_obj=False):
         '''
         Recover the orders from a specific price level
         :param s_side: string. The side of the book
         :*param f_price: float. The price level desired. If not set, return
             the best price
+        :*param b_rtn_obj: bool. If return the price object or tree of orders
         '''
         # side of the order book
         obj_price = None
@@ -542,6 +543,8 @@ class LimitOrderBook(object):
             obj_price = self.book_ask.price_tree.get(f_price)
         # return the order tree
         if obj_price:
+            if b_rtnobj:
+                return obj_price
             return obj_price.order_tree
 
     def get_basic_stats(self):
