@@ -44,6 +44,9 @@ def translate_row(idx, row, my_book):
     :param row: dict.
     :param my_book: Book object.
     '''
+    # TODO: when the row is from my agent, it should modify the order book
+    # to acomodate it in a way that, when happen a trade, for instance, the
+    # final state of the book is the same with my agent or not
     l_msg = []
     row['Price'] = float(row['Price'])
     row['Size'] = float(row['Size'])
@@ -319,6 +322,7 @@ class BloombergMatching(OrderMatching):
     def next(self, b_print=False):
         '''
         Return a list of messages from the agents related to the current step
+        :*param b_print: boolean. If should print the messaged generated
         '''
         # if it will open a files that doesnt exist, stop
         if int(self.idx) > self.max_nfiles:
@@ -348,17 +352,15 @@ class BloombergMatching(OrderMatching):
                     else:
                         self.i_agr_bid += row['Size']
             self.i_nrow += 1
-            # if self.i_nrow == 2246:
-            #     raise Foo("Reach row")
             return l_msg
         except StopIteration:
             self.i_nrow = 0
             self.idx += 1
             # print self.my_book.get_n_top_prices(5)
             # print ""
-            s_msg = 'agr Bid: {:0,.0f}, agr Ask: {:0,.0f}, TOTAL: {:0,.0f}'
-            i_tot = self.i_agr_bid + self.i_agr_ask
-            print s_msg.format(self.i_agr_bid, self.i_agr_ask, i_tot)
+            # s_msg = 'agr Bid: {:0,.0f}, agr Ask: {:0,.0f}, TOTAL: {:0,.0f}'
+            # i_tot = self.i_agr_bid + self.i_agr_ask
+            # print s_msg.format(self.i_agr_bid, self.i_agr_ask, i_tot)
             self.i_agr_bid = 0
             self.i_agr_ask = 0
             # if self.i_nrow % 1000 == 0:
