@@ -12,7 +12,6 @@ import time
 import random
 import importlib
 import logging
-import curses
 
 # global variable
 DEBUG = False
@@ -61,10 +60,13 @@ class Simulator(object):
 
                     # Update environment
                     f_time_step = self.current_time - self.last_updated
+                    self.env.step()
+                    # print information to be ploted by a visualization
                     if f_time_step >= self.update_delay:
-                        self.env.step()
+                        pass
                         self.last_updated = self.current_time
-
+                except StopIteration:
+                    self.quit = True
                 except KeyboardInterrupt:
                     self.quit = True
                 finally:

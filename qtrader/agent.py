@@ -158,12 +158,11 @@ def run():
     e.set_primary_agent(a, enforce_deadline=True)  # specify agent to track
 
     # Now simulate it
-    # create simulator (uses pygame when display=True, if available)
     sim = Simulator(e, update_delay=0.01, display=False)
     sim.run(n_trials=100)  # run for a specified number of trials
 
     # save the Q table of the primary agent
-    save_q_table(e)
+    # save_q_table(e)
 
 
 if __name__ == '__main__':

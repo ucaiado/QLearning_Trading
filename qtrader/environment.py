@@ -11,7 +11,7 @@ import time
 import random
 from collections import OrderedDict
 
-import matching_engine
+from matching_engine import BloombergMatching
 import logging
 
 # global variable
@@ -31,15 +31,11 @@ class Environment(object):
     Environment within which all agents operate.
     '''
 
-    valid_actions = [None, 'BID', 'ASK', 'TRADE']
-    valid_headings = [(1, 0), (0, -1), (-1, 0), (0, 1)]  # ENWS
-    # even if enforce_deadline is False, end trial when deadline reaches this
-    # value (to avoid deadlocks)
-    hard_time_limit = -100
+    valid_actions = [None, 'BID', 'ASK', 'BID_TRADE', 'ASK_TRADE']
 
     def __init__(self):
         '''
-        Initialize a Environment object.
+        Initialize an Environment object.
         '''
         self.s_instrument = 'FOO'
         self.done = False
@@ -47,45 +43,60 @@ class Environment(object):
         self.agent_states = OrderedDict()
         self.status_text = ''
 
-        # Dummy agents
+        # Include Dummy agents
         self.num_dummies = 1  # no. of dummy agents
+        self.last_id_agent = 10
         for i in xrange(self.num_dummies):
-            self.create_agent(DummyAgent)
+            self.create_agent(ZombieAgent)
 
-        # Primary agent
+        # Include Primary agent
         self.primary_agent = None  # to be set explicitly
         self.enforce_deadline = False
 
-        # Matching Engine
+        # Initiate Matching Engine
         s_aux = self.s_instrument
         i_naux = self.num_dummies+1
-        self.order_matching = matching_engine.BloombergMatching(self,
-                                                                s_aux,
-                                                                i_naux,
-                                                                s_fname)
+        s_fname = 'data/petr4_0725_0818_2.zip'  # hardcoded
+        self.order_matching = BloombergMatching(env=self,
+                                                s_instrument=s_aux,
+                                                i_num_agents=i_naux,
+                                                s_fname=s_fname)
 
     def create_agent(self, agent_class, *args, **kwargs):
         '''
         Include a agent in the environment and initiate its env state
+        :param agent_class: Agent Object. The agent desired
+        :*param args, kwargs: any type. Any other parameter needed by the agent
         '''
+
+        kwargs['i_id'] = self.last_id_agent
         agent = agent_class(self, *args, **kwargs)
-        self.agent_states[agent] = {'qBid': 0.,
-                                    'vBid': 0.,
-                                    'qAsk': 0.,
-                                    'vAsk': 0.,
-                                    'Position': 0.}
+        self.agent_states[agent] = {'qBid': 0,
+                                    'Bid': 0.,
+                                    'Ask': 0.,
+                                    'qAsk': 0,
+                                    'Position': 0,
+                                    'Agent': agent}
+        self.last_id_agent += 1
         return agent
 
-    def set_primary_agent(self, agent, enforce_deadline=False):
+    def set_primary_agent(self, agent):
         '''
-        Initiate the agent that is suposed to be modeled
+        Initiate the agent that is supposed to be modeled
+        :param agent: Agent Object. The agent used as primary
         '''
         self.primary_agent = agent
-        self.enforce_deadline = enforce_deadline
+        self.agent_states[agent] = {'qBid': 0,
+                                    'Bid': 0.,
+                                    'Ask': 0.,
+                                    'qAsk': 0,
+                                    'Position': 0,
+                                    'Agent': agent}
 
     def reset(self):
         '''
-        Reset the enrironment and reinitialize all variables needed
+        Reset the environment and all variables needed as well as the states
+        of each agent
         '''
         self.done = False
         self.t = 0
@@ -100,11 +111,12 @@ class Environment(object):
 
         # Initialize agent(s)
         for agent in self.agent_states.iterkeys():
-            self.agent_states[agent] = {'qBid': 0.,
-                                        'vBid': 0.,
-                                        'qAsk': 0.,
-                                        'vAsk': 0.,
-                                        'Position': 0.}
+            self.agent_states[agent] = {'qBid': 0,
+                                        'Bid': 0.,
+                                        'Ask': 0.,
+                                        'qAsk': 0,
+                                        'Position': 0,
+                                        'Agent': agent}
             agent.reset()
 
     def step(self):
@@ -113,9 +125,11 @@ class Environment(object):
         agents
         '''
         # Update agents asking to the order matching what each one has done
-        l_msg = self.order_book
-        for agent in self.agent_states.iterkeys():
-            agent.update(self.t)
+        l_msg = self.order_matching.next()
+        i_time = self.order_matching.last_date
+        for msg in l_msg:
+            agent_aux = self.agent_states[msg['agent_id']]['Agent']
+            self.update_agent_state(agent_aux, msg, i_time)
 
         self.t += 1
 
@@ -147,12 +161,8 @@ class Environment(object):
                 if left != 'forward':  # we don't want to override left == 'forward'
                     left = other_heading
 
-        return {'light': light, 'oncoming': oncoming, 'left': left, 'right': right}  # TODO: make this a namedtuple
-
-    def get_deadline(self, agent):
-        '''
-        '''
-        return self.agent_states[agent]['deadline'] if agent is self.primary_agent else None
+        # TODO: make this a namedtuple
+        return {'light': light, 'oncoming': oncoming, 'left': left, 'right': right}
 
     def act(self, agent, action):
         '''
@@ -217,53 +227,96 @@ class Environment(object):
 
         return reward
 
-    def compute_dist(self, a, b):
+    def update_agent_state(self, agent, i_time, msg):
         '''
-        L1 distance between two points.
+        Update the agent state dictionary
+        :param agent: Agent Object. The agent used as primary
+        :param msg: string. Order matching message
+        :param t: integer. Time stemp of the order book
         '''
-        return abs(b[0] - a[0]) + abs(b[1] - a[1])
+        assert agent in self.agent_states, 'Unknown agent!'
+        agent.update(i_time, msg)
+        for s_key in ['qBid', 'Bid', 'Ask', 'qAsk']:
+            self.agent_states[agent][s_key] += agent[s_key]
+        qBid = self.agent_states[agent]['qBid']
+        qAsk = self.agent_states[agent]['qAsk']
+        self.agent_states[agent]['Position'] = qBid - qAsk
 
 
 class Agent(object):
     '''
     Base class for all agents.
     '''
+    # dict to use to find out what side the book was traded by the agent
+    trade_side = {'Agressive': {'BID': 'Ask', 'ASK': 'Bid'},
+                  'Passive': {'BID': 'Bid', 'ASK': 'Ask'}}
 
     def __init__(self, env, i_id):
         '''
         Initiate an Agent object. Save all parameters as attributes
-        :param env: Environment Object. The environment that the agent interact
+        :param env: Environment Object. The Environment where the agent acts
         :param i_id: integer. Agent id
         '''
         self.env = env
+        self.i_id = i_id
         self.state = None
-        self.qBid = 0
-        self.qAsk = 0
-        self.Bid = 0
-        self.Ask = 0
+        self.position = {'qAsk': 0, 'Ask': 0., 'qBid': 0, 'Bid': 0.}
+        self.d_order_map = {}
 
-    def reset(self, destination=None):
+    def reset(self):
         '''
+        Reset the state and the agent's memory about its positions
         '''
-        self.qBid = 0
-        self.qAsk = 0
-        self.Bid = 0
-        self.Ask = 0
+        self.state = None
+        self.position = {'qAsk': 0, 'Ask': 0., 'qBid': 0, 'Bid': 0.}
+        self.d_order_map = {}
 
-    def act(self):
+    def act(self, msg):
         '''
+        Update the positions of the agent based on the message passed
+        :param msg: string. Order matching message
         '''
-        pass
+        # recover some variables to use
+        s_status = msg['order_status']
+        i_id = msg['order_id']
+        # update position and
+        if s_status in ['New', 'Replaced']:
+            self.d_order_map[i_id] = msg
+        if s_status in ['Canceled', 'Expired']:
+            self.d_order_map.pop(i_id)
+        elif s_status in ['Filled', 'Partially Filled']:
+            # update the order map, if it was a passive trade
+            if msg['agressor_indicator'] == 'Passive':
+                if s_status == 'Filled':
+                    self.d_order_map.pop(i_id)
+                else:
+                    self.d_order_map[i_id] = msg
+            # account the trades
+            s_tside = self.trade_side[msg['agressor_indicator']]
+            s_tside = s_tside[msg['order_side']]
+            self.position['q' + s_tside] += msg['order_qty']
+            f_volume = msg['total_qty_order'] * msg['order_qty']
+            self.position[s_tside] += f_volume
 
-    def update(self, t):
+    def update(self, msg, t):
         '''
+        Update the inner state of the agent
+        :param msg: string. Order matching message
+        :param t: integer. Time stemp of the order book
         '''
-        pass
+        NotImplementedError('This class should be implemented')
 
     def get_state(self):
         '''
+        Return the inner state of the agent
         '''
         return self.state
+
+    def get_position(self):
+        '''
+        Return the positions of the agent
+        '''
+        return self.position
 
     def __str__(self):
         '''
@@ -282,7 +335,10 @@ class Agent(object):
         Return if a Agent has equal i_id from the other
         :param other: agent object. Agent to be compared
         '''
-        return self.i_id == other.i_id
+        i_id = other
+        if not isinstance(other, int):
+            i_id = other.i_id
+        return self.i_id == i_id
 
     def __ne__(self, other):
         '''
@@ -298,31 +354,37 @@ class Agent(object):
         '''
         return self.i_id.__hash__()
 
-
-class DummyAgent(Agent):
-    '''
-    '''
-
-    def __init__(self, env):
+    def __getitem__(self, s_idx):
         '''
+        Allow direct access to the position information of the object
         '''
+        return self.position[s_idx]
 
-        # sets self.env = env, state = None, next_waypoint = None, and a
-        # default color
-        super(DummyAgent, self).__init__(env)
-        self.next_waypoint = random.choice(Environment.valid_actions[1:])
 
-    def update(self, s_msg):
+class ZombieAgent(Agent):
+    '''
+    A ZombieAgent just obeys what the order matching engine determines
+    '''
+
+    def __init__(self, env, i_id):
+        '''
+        Initiate a ZombieAgent object. save all parameters as attributes
+        :param env: Environment Object. The Environment where the agent acts
+        :param i_id: integer. Agent id
+        '''
+        super(ZombieAgent, self).__init__(env, i_id)
+
+    def update(self, s_msg, i_time):
         '''
         Update the state of the agent
         :param s_msg: string. A message generated by the order matching
+        :param i_time: integer. The current time of the order book
         '''
-        inputs = self.env.sense(self)
+        self.act(s_msg)
+        # inputs = self.env.sense(self)
 
-
-
-        action = None
-        if action_okay:
-            action = self.next_waypoint
-            self.next_waypoint = random.choice(Environment.valid_actions[1:])
-        reward = self.env.act(self, action)
+        # action = None
+        # if action_okay:
+        #     action = self.next_waypoint
+        #     self.next_waypoint = random.choice(Environment.valid_actions[1:])
+        # reward = self.env.act(self, action)

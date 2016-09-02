@@ -99,7 +99,22 @@ def translate_row(idx, row, my_book):
                      'order_status': s_status,
                      'total_qty_order': order_aux['org_total_qty_order'],
                      'traded_qty_order': i_qty_traded,
-                     'agressor_indicator': 'Passive'}
+                     'agressor_indicator': 'Passive',
+                     'order_qty': i_qty}
+            l_msg.append(d_rtn.copy())
+            # create another to update who took the action
+            d_rtn = {'agent_id': order_aux['agent_id'],
+                     'instrumento_symbol': 'PETR4',
+                     'order_id': order_aux['order_id'],
+                     'order_entry_step': idx,
+                     'new_order_id': order_aux['order_id'],
+                     'order_price': row['Price'],
+                     'order_side': 'BID' if s_side == 'ASK' else 'BID',
+                     'order_status': 'Filled',
+                     'total_qty_order': order_aux['org_total_qty_order'],
+                     'traded_qty_order': i_qty_traded,
+                     'agressor_indicator': 'Agressive',
+                     'order_qty': i_qty}
             l_msg.append(d_rtn.copy())
 
     else:
@@ -360,7 +375,10 @@ class BloombergMatching(OrderMatching):
                 # process the last message and use info from row
                 # to compute the number of shares traded by aggressor
                 if msg['order_status'] in ['Partially Filled', 'Filled']:
-                    if msg['order_side'] == 'BID':
+                    if msg['agressor_indicator'] == 'Agressive':
+                        # dont process this kind of order
+                        pass
+                    elif msg['order_side'] == 'BID':
                         self.i_agr_ask += row['Size']
                     else:
                         self.i_agr_bid += row['Size']

@@ -60,15 +60,6 @@ class Order(object):
         self.name = "{:07d}".format(d_msg['order_id'])
         self.main_id = self.order_id
 
-    def update_id(self):
-        '''
-        Change the IDs attributes to the new one
-        '''
-        self.d_msg['order_id'] = d_msg['new_order_id']
-        self.order_id = d_msg['order_id']
-        self.name = "{:07d}".format(d_msg['order_id'])
-        self.main_id = self.order_id
-
     def __str__(self):
         '''
         Return the name of the Order
@@ -231,6 +222,9 @@ class BookSide(object):
         message was handle successfully
         :param d_data: dict. data related to a single order
         '''
+        # dont process aggresive trades
+        if d_data['agressor_indicator'] == 'Agressive':
+            return True
         # update the book information
         order_aux = Order(d_data)
         s_status = order_aux['order_status']
