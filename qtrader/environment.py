@@ -32,10 +32,6 @@ class Environment(object):
     '''
 
     valid_actions = [None, 'BID', 'ASK', 'TRADE']
-    valid_inputs = {'light': TrafficLight.valid_states,
-                    'oncoming': valid_actions,
-                    'left': valid_actions,
-                    'right': valid_actions}
     valid_headings = [(1, 0), (0, -1), (-1, 0), (0, 1)]  # ENWS
     # even if enforce_deadline is False, end trial when deadline reaches this
     # value (to avoid deadlocks)
@@ -70,93 +66,63 @@ class Environment(object):
 
     def create_agent(self, agent_class, *args, **kwargs):
         '''
+        Include a agent in the environment and initiate its env state
         '''
         agent = agent_class(self, *args, **kwargs)
-        self.agent_states[agent] = {'location': 0,
-                                    'heading': (0, 1)}
+        self.agent_states[agent] = {'qBid': 0.,
+                                    'vBid': 0.,
+                                    'qAsk': 0.,
+                                    'vAsk': 0.,
+                                    'Position': 0.}
         return agent
 
     def set_primary_agent(self, agent, enforce_deadline=False):
         '''
+        Initiate the agent that is suposed to be modeled
         '''
         self.primary_agent = agent
         self.enforce_deadline = enforce_deadline
 
     def reset(self):
         '''
+        Reset the enrironment and reinitialize all variables needed
         '''
         self.done = False
         self.t = 0
 
-        # Reset traffic lights
-        # for traffic_light in self.intersections.itervalues():
-        #     traffic_light.reset()
-
-        # Pick a start and a destination
-        start = random.choice(self.intersections.keys())
-        destination = random.choice(self.intersections.keys())
-
-        # Ensure starting location and destination are not too close
-        while self.compute_dist(start, destination) < 4:
-            start = random.choice(self.intersections.keys())
-            destination = random.choice(self.intersections.keys())
-
-        start_heading = random.choice(self.valid_headings)
-        deadline = self.compute_dist(start, destination) * 5
-        s_msg = 'Environment.reset(): Trial set up with start = {}, '
-        s_msg += 'destination = {}, deadline = {}'
+        # reset environment
+        s_msg = 'Environment.reset(): Trial set up to use {} file'
+        s_name = self.order_matching.get_trial_identification()
         if DEBUG:
-            logging.info(s_msg.format(start, destination, deadline))
+            logging.info(s_msg.format(s_name))
         else:
-            print s_msg.format(start, destination, deadline)
+            print s_msg.format(s_name)
 
         # Initialize agent(s)
         for agent in self.agent_states.iterkeys():
-            self.agent_states[agent] = {
-                'location': start if agent is self.primary_agent else random.choice(self.intersections.keys()),
-                'heading': start_heading if agent is self.primary_agent else random.choice(self.valid_headings),
-                'destination': destination if agent is self.primary_agent else None,
-                'deadline': deadline if agent is self.primary_agent else None}
-            agent.reset(destination=(destination if agent is self.primary_agent else None))
+            self.agent_states[agent] = {'qBid': 0.,
+                                        'vBid': 0.,
+                                        'qAsk': 0.,
+                                        'vAsk': 0.,
+                                        'Position': 0.}
+            agent.reset()
 
     def step(self):
         '''
+        Perform a discreate step in the environment updating the state of all
+        agents
         '''
-        # print "Environment.step(): t = {}".format(self.t)  # [debug]
-
-        # Update traffic lights
-        # for intersection, traffic_light in self.intersections.iteritems():
-        #     traffic_light.update(self.t)
-
         # Update agents asking to the order matching what each one has done
         l_msg = self.order_book
-        # for agent in self.agent_states.iterkeys():
-        #     agent.update(self.t)
+        for agent in self.agent_states.iterkeys():
+            agent.update(self.t)
 
         self.t += 1
-        if self.primary_agent is not None:
-            agent_deadline = self.agent_states[self.primary_agent]['deadline']
-
-            # change this part of the code to log the messages to a file
-            s_msg = None
-            if agent_deadline <= self.hard_time_limit:
-                self.done = True
-                s_msg = "Environment.step(): Primary agent hit hard time limit ({})! Trial aborted.".format(self.hard_time_limit)
-            elif self.enforce_deadline and agent_deadline <= 0:
-                self.done = True
-                s_msg = "Environment.step(): Primary agent ran out of time! Trial aborted."
-            if s_msg:
-                if DEBUG:
-                    logging.info(s_msg)
-                else:
-                    print s_msg
-
-            self.agent_states[self.primary_agent]['deadline'] = agent_deadline - 1
 
     def sense(self, agent):
         '''
         '''
-        assert agent in self.agent_states, "Unknown agent!"
+        assert agent in self.agent_states, 'Unknown agent!'
 
         state = self.agent_states[agent]
         location = state['location']
@@ -191,8 +157,8 @@ class Environment(object):
     def act(self, agent, action):
         '''
         '''
-        assert agent in self.agent_states, "Unknown agent!"
-        assert action in self.valid_actions, "Invalid action!"
+        assert agent in self.agent_states, 'Unknown agent!'
+        assert action in self.valid_actions, 'Invalid action!'
 
         state = self.agent_states[agent]
         location = state['location']
@@ -241,20 +207,20 @@ class Environment(object):
                 self.done = True
 
                 # change this part of the code to log the messages to a file
-                s_msg = "Environment.act(): Primary agent has reached destination!"  # [debug]
+                s_msg = 'Environment.act(): Primary agent has reached destination!'  # [debug]
                 if DEBUG:
                     logging.info(s_msg)
                 else:
                     print s_msg
-            self.status_text = "state: {}\naction: {}\nreward: {}".format(agent.get_state(), action, reward)
-            #print "Environment.act() [POST]: location: {}, heading: {}, action: {}, reward: {}".format(location, heading, action, reward)  # [debug]
+            self.status_text = 'state: {}\naction: {}\nreward: {}'.format(agent.get_state(), action, reward)
+            #print 'Environment.act() [POST]: location: {}, heading: {}, action: {}, reward: {}'.format(location, heading, action, reward)  # [debug]
 
         return reward
 
     def compute_dist(self, a, b):
         '''
+        L1 distance between two points.
         '''
-        """L1 distance between two points."""
         return abs(b[0] - a[0]) + abs(b[1] - a[1])
 
 
@@ -263,14 +229,28 @@ class Agent(object):
     Base class for all agents.
     '''
 
-    def __init__(self, env):
+    def __init__(self, env, i_id):
         '''
+        Initiate an Agent object. Save all parameters as attributes
+        :param env: Environment Object. The environment that the agent interact
+        :param i_id: integer. Agent id
         '''
         self.env = env
         self.state = None
-        self.next_waypoint = None
+        self.qBid = 0
+        self.qAsk = 0
+        self.Bid = 0
+        self.Ask = 0
 
     def reset(self, destination=None):
+        '''
+        '''
+        self.qBid = 0
+        self.qAsk = 0
+        self.Bid = 0
+        self.Ask = 0
+
+    def act(self):
         '''
         '''
         pass
@@ -285,10 +265,38 @@ class Agent(object):
         '''
         return self.state
 
-    def get_next_waypoint(self):
+    def __str__(self):
         '''
+        Return the name of the Agent
         '''
-        return self.next_waypoint
+        return str(self.i_id)
+
+    def __repr__(self):
+        '''
+        Return the name of the Agent
+        '''
+        return str(self.i_id)
+
+    def __eq__(self, other):
+        '''
+        Return if a Agent has equal i_id from the other
+        :param other: agent object. Agent to be compared
+        '''
+        return self.i_id == other.i_id
+
+    def __ne__(self, other):
+        '''
+        Return if a Agent has different i_id from the other
+        :param other: agent object. Agent to be compared
+        '''
+        return not self.__eq__(other)
+
+    def __hash__(self):
+        '''
+        Allow the Agent object be used as a key in a hash table. It is used by
+        dictionaries
+        '''
+        return self.i_id.__hash__()
 
 
 class DummyAgent(Agent):
@@ -304,21 +312,14 @@ class DummyAgent(Agent):
         super(DummyAgent, self).__init__(env)
         self.next_waypoint = random.choice(Environment.valid_actions[1:])
 
-    def update(self, t):
+    def update(self, s_msg):
         '''
+        Update the state of the agent
+        :param s_msg: string. A message generated by the order matching
         '''
         inputs = self.env.sense(self)
 
-        action_okay = True
-        if self.next_waypoint == 'right':
-            if inputs['light'] == 'red' and inputs['left'] == 'forward':
-                action_okay = False
-        elif self.next_waypoint == 'forward':
-            if inputs['light'] == 'red':
-                action_okay = False
-        elif self.next_waypoint == 'left':
-            if inputs['light'] == 'red' or (inputs['oncoming'] == 'forward' or inputs['oncoming'] == 'right'):
-                action_okay = False
+
 
         action = None
         if action_okay:

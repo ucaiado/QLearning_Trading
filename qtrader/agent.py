@@ -66,11 +66,86 @@ class BasicAgent(Agent):
     def __init__(self, env):
         '''
         Initialize a BasicLearningAgent. Save all parameters as attributes
-        :param env: Environment object. The Market
+        :param env: Environment object. The grid-like world
         '''
         # sets self.env = env, state = None, next_waypoint = None, and a
         # default color
         super(BasicAgent, self).__init__(env)
+        # override color
+        self.color = 'green'
+        # simple route planner to get next_waypoint
+        self.planner = RoutePlanner(self.env, self)
+        # Initialize any additional variables here
+
+    def reset(self, destination=None):
+        '''
+        Prepare for a new trip
+        :param destination: tuple. the coordinates of the destination
+        '''
+        self.planner.route_to(destination)
+        # Prepare for a new trip; reset any variables here, if required
+        self.state = None
+        self.next_waypoint = None
+        self.old_state = None
+        self.last_action = None
+        self.last_reward = None
+
+    def update(self, t):
+        '''
+        Update the state of the agent
+        :param t: integer. Environment step attribute value
+        '''
+        # Gather inputs
+        # from route planner, also displayed by simulator
+        self.next_waypoint = self.planner.next_waypoint()
+        inputs = self.env.sense(self)
+        deadline = self.env.get_deadline(self)
+
+        # Update state
+        self.state = self._get_intern_state(inputs, deadline)
+
+        # Select action according to your policy
+        action = self._take_action(self.state)
+
+        # Execute action and get reward
+        reward = self.env.act(self, action)
+
+        # Learn policy based on state, action, reward
+        self._apply_policy(self.state, action, reward)
+
+        # [debug]
+        s_rtn = 'LearningAgent.update(): deadline = {}, inputs = {}, action'
+        s_rtn += ' = {}, reward = {}'
+        if DEBUG:
+            s_rtn += ', next_waypoint = {}'
+            root.debug(s_rtn.format(deadline, inputs, action, reward,
+                       self.next_waypoint))
+        else:
+            print s_rtn.format(deadline, inputs, action, reward)
+
+    def _get_intern_state(self, inputs, deadline):
+        '''
+        Return a tuple representing the intern state of the agent
+        :param inputs: dictionary. traffic light and presence of cars
+        :param deadline: integer. time steps remaining
+        '''
+        return (inputs, self.next_waypoint, deadline)
+
+    def _take_action(self, t_state):
+        '''
+        Return an action according to the agent policy
+        :param t_state: tuple. The inputs to be considered by the agent
+        '''
+        return random.choice(Environment.valid_actions)
+
+    def _apply_policy(self, state, action, reward):
+        '''
+        Learn policy based on state, action, reward
+        :param state: dictionary. The current state of the agent
+        :param action: string. the action selected at this time
+        :param reward: integer. the rewards received due to the action
+        '''
+        pass
 
 
 def run():
