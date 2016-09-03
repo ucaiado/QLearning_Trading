@@ -25,9 +25,7 @@ Begin help functions
 
 class Foo(Exception):
     """
-    DifferentPriceException is raised by the update() method in the PriceLevel
-    class to indicate that the price of order object is different from the
-    PriceLevel
+    Foo is raised by ...
     """
     pass
 
@@ -88,7 +86,9 @@ def translate_row(idx, row, my_book):
                 s_status = 'Partially Filled'
             assert i_qty >= 0, 'Qty traded smaller than 0'
             # create the message
+            i_qty2 = i_qty_traded + 1 - 1
             i_qty_traded += order_aux['traded_qty_order']
+            s_action = s_side
             d_rtn = {'agent_id': order_aux['agent_id'],
                      'instrumento_symbol': 'PETR4',
                      'order_id': order_aux['order_id'],
@@ -100,9 +100,14 @@ def translate_row(idx, row, my_book):
                      'total_qty_order': order_aux['org_total_qty_order'],
                      'traded_qty_order': i_qty_traded,
                      'agressor_indicator': 'Passive',
-                     'order_qty': i_qty}
+                     'order_qty': i_qty2,
+                     'action': s_action}
             l_msg.append(d_rtn.copy())
             # create another to update who took the action
+            s_action = 'BUY'
+            # if one  makes a trade at bid, it is a sell
+            if s_side == 'BID':
+                s_action = 'SELL'
             d_rtn = {'agent_id': order_aux['agent_id'],
                      'instrumento_symbol': 'PETR4',
                      'order_id': order_aux['order_id'],
@@ -114,7 +119,8 @@ def translate_row(idx, row, my_book):
                      'total_qty_order': order_aux['org_total_qty_order'],
                      'traded_qty_order': i_qty_traded,
                      'agressor_indicator': 'Agressive',
-                     'order_qty': i_qty}
+                     'order_qty': i_qty2,
+                     'action': s_action}
             l_msg.append(d_rtn.copy())
 
     else:
@@ -137,12 +143,14 @@ def translate_row(idx, row, my_book):
                 best_order = obj_ordtree2.nsmallest(1)[0][1]
                 d_rtn = best_order.d_msg
                 d_rtn['order_status'] = 'Canceled'
+                d_rtn['action'] = None
                 l_msg.append(d_rtn.copy())
             elif row['Type'] == 'ASK' and row['Price'] > f_best_price:
                 obj_ordtree2 = my_book.get_orders_by_price(row['Type'])
                 best_order = obj_ordtree2.nsmallest(1)[0][1]
                 d_rtn = best_order.d_msg
                 d_rtn['order_status'] = 'Canceled'
+                d_rtn['action'] = None
                 l_msg.append(d_rtn.copy())
             # replace the current order
             i_new_id = obj_order.main_id
@@ -150,8 +158,12 @@ def translate_row(idx, row, my_book):
                 i_new_id = my_book.i_last_order_id + 1
                 d_rtn = obj_order.d_msg
                 d_rtn['order_status'] = 'Canceled'
+                d_rtn['action'] = None
                 l_msg.append(d_rtn.copy())
             # Replace the order
+            s_action = 'BEST_BID'
+            if row['Type'] == 'ASK':
+                s_action = 'BEST_OFFER'
             d_rtn = {'agent_id': 10,
                      'instrumento_symbol': 'PETR4',
                      'order_id': i_new_id,
@@ -162,10 +174,14 @@ def translate_row(idx, row, my_book):
                      'order_status': 'Replaced',
                      'total_qty_order': row['Size'],
                      'traded_qty_order': 0,
-                     'agressor_indicator': 'Neutral'}
+                     'agressor_indicator': 'Neutral',
+                     'action': s_action}
             l_msg.append(d_rtn.copy())
         else:
             # if the price is not still in the book, include a new order
+            s_action = 'BEST_BID'
+            if row['Type'] == 'ASK':
+                s_action = 'BEST_OFFER'
             d_rtn = {'agent_id': 10,
                      'instrumento_symbol': 'PETR4',
                      'order_id': my_book.i_last_order_id + 1,
@@ -176,7 +192,8 @@ def translate_row(idx, row, my_book):
                      'order_status': 'New',
                      'total_qty_order': row['Size'],
                      'traded_qty_order': 0,
-                     'agressor_indicator': 'Neutral'}
+                     'agressor_indicator': 'Neutral',
+                     'action': s_action}
             l_msg.append(d_rtn)
     return l_msg
 
