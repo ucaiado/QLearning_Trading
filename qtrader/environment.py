@@ -53,7 +53,6 @@ class Environment(object):
         self.done = False
         self.t = 0
         self.agent_states = OrderedDict()
-        self.status_text = ''
 
         # Include Dummy agents
         self.num_dummies = 1  # no. of dummy agents
@@ -88,7 +87,9 @@ class Environment(object):
                                     'Ask': 0.,
                                     'qAsk': 0,
                                     'Position': 0,
-                                    'Agent': agent}
+                                    'Agent': agent,
+                                    'best_bid': False,
+                                    'best_offer': False}
         self.last_id_agent += 1
         return agent
 
@@ -103,7 +104,9 @@ class Environment(object):
                                     'Ask': 0.,
                                     'qAsk': 0,
                                     'Position': 0,
-                                    'Agent': agent}
+                                    'Agent': agent,
+                                    'best_bid': False,
+                                    'best_offer': False}
 
     def reset(self):
         '''
@@ -128,7 +131,9 @@ class Environment(object):
                                         'Ask': 0.,
                                         'qAsk': 0,
                                         'Position': 0,
-                                        'Agent': agent}
+                                        'Agent': agent,
+                                        'best_bid': False,
+                                        'best_offer': False}
             agent.reset()
 
     def step(self):
@@ -178,14 +183,27 @@ class Environment(object):
 
     def act(self, agent, action):
         '''
+        Return the environment reward or penalty by the agent's action and
+        current state. Also, update the known condition of the agent's state
+        by the Environment
+        :param agent: Agent object. the agent that will perform the action
+        :param action: dictionary. The current action of the agent
         '''
         assert agent in self.agent_states, 'Unknown agent!'
         assert action['action'] in self.valid_actions, 'Invalid action!'
 
-        agent.act(action)  # TODO: make it right
+        # Update the position using action
+        agent.act(action)
+        position = agent.position
+        # update current position in the agent state
+        state = self.agent_states[agent]
+        for s_key in position:
+            state[s_key] = position[s_key]
+        state['Position'] = state['qBid'] - state['qAsk']
+        # measure the reward
+
         reward = 0.
 
-        # state = self.agent_states[agent]
         # location = state['location']
         # heading = state['heading']
         # light = 'green' if (self.intersections[location].state and heading[1] != 0) or ((not self.intersections[location].state) and heading[0] != 0) else 'red'
@@ -300,7 +318,7 @@ class Agent(object):
         # recover some variables to use
         s_status = msg['order_status']
         i_id = msg['order_id']
-        # update position and
+        # update position
         if s_status in ['New', 'Replaced']:
             self.d_order_map[i_id] = msg
         if s_status in ['Canceled', 'Expired']:
@@ -437,15 +455,16 @@ class ZombieAgent(Agent):
 
         # inputs = self.env.sense(self)
         inputs = {}  # TODO: correct that
-        position = self.get_position()
+        state = self.env.agent_states[self]
 
         # Update state (position ,volume and if keep an order in bid or ask)
-        self.state = self._get_intern_state(inputs, position)
+        self.state = self._get_intern_state(inputs, state)
 
         # Select action according to the agent's policy
         action = self._take_action(self.state, s_msg)
 
         # # Execute action and get reward
+        # print '\ncurrent action: {}\n'.format(action)
         reward = self.env.act(self, action)
 
         # Learn policy based on state, action, reward
@@ -454,13 +473,13 @@ class ZombieAgent(Agent):
         # [debug]
         s_rtn = 'ZombieAgent.update(): position = {}, inputs = {}, action'
         s_rtn += ' = {}, reward = {}'
-        if DEBUG:
-            root.debug(s_rtn.format(position['qBid'] - position['qAsk'],
-                                    inputs,
-                                    action,
-                                    reward))
-        else:
-            print s_rtn.format(position['qBid'] - position['qAsk'],
-                               inputs,
-                               action,
-                               reward)
+        # if DEBUG:
+        #     root.debug(s_rtn.format(state['Position'],
+        #                             inputs,
+        #                             action,
+        #                             reward))
+        # else:
+        #     print s_rtn.format(state['Position'],
+        #                        inputs,
+        #                        action['action'],
+        #                        reward)

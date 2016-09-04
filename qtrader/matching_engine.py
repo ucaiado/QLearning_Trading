@@ -89,6 +89,10 @@ def translate_row(idx, row, my_book):
             i_qty2 = i_qty_traded + 1 - 1
             i_qty_traded += order_aux['traded_qty_order']
             s_action = s_side
+            s_action = 'BUY'
+            # if one  makes a trade at bid, it is a sell
+            if s_side == 'ASK':
+                s_action = 'SELL'
             d_rtn = {'agent_id': order_aux['agent_id'],
                      'instrumento_symbol': 'PETR4',
                      'order_id': order_aux['order_id'],
@@ -114,7 +118,7 @@ def translate_row(idx, row, my_book):
                      'order_entry_step': idx,
                      'new_order_id': order_aux['order_id'],
                      'order_price': row['Price'],
-                     'order_side': 'BID' if s_side == 'ASK' else 'BID',
+                     'order_side': s_side,
                      'order_status': 'Filled',
                      'total_qty_order': order_aux['org_total_qty_order'],
                      'traded_qty_order': i_qty_traded,
@@ -339,8 +343,11 @@ class BloombergMatching(OrderMatching):
         self.idx = 0.
         self.i_nrow = 0.
         self.s_time = ''
-        self.best_bid = ()
-        self.best_ask = ()
+        self.last_date = 0
+        self.best_bid = (0, 0)
+        self.best_ask = (0, 0)
+        self.i_qty_traded_at_bid = 0
+        self.i_qty_traded_at_ask = 0
         if i_idx:
             self.idx = i_idx
 
@@ -393,8 +400,12 @@ class BloombergMatching(OrderMatching):
                 # to compute the number of shares traded by aggressor
                 if msg['order_status'] in ['Partially Filled', 'Filled']:
                     if msg['agressor_indicator'] == 'Agressive':
-                        # dont process this kind of order
-                        pass
+                        # dont process this kind of order, but keep track of
+                        # the quantities traded by side
+                        if msg['order_side'] == 'BID':
+                            self.i_qty_traded_at_ask += msg['order_qty']
+                        else:
+                            self.i_qty_traded_at_bid += msg['order_qty']
                     elif msg['order_side'] == 'BID':
                         self.i_agr_ask += row['Size']
                     else:
@@ -402,11 +413,24 @@ class BloombergMatching(OrderMatching):
             # keep the bet- bid and offer in a variable
             if row['Type'] != 'TRADE':
                 try:
-                    self.best_bid = self.my_book.book_bid.price_tree.max_item()
-                    self.best_ask = self.my_book.book_ask.price_tree.min_item()
-                except:
+                    # TODO: split intop prie and qty
+                    last_bid = self.best_bid
+                    last_ask = self.best_ask
+                    o_aux = self.my_book
+                    best_bid = o_aux.book_bid.price_tree.max_item()
+                    best_bid = (best_bid[1].i_qty)
+                    best_ask = o_aux.book_ask.price_tree.min_item()
+                    best_ask = (best_ask[1].i_qty)
+                    raise Foo("here we are")
+                    # account OFI
+                    if last_bid != self.best_bid:
+                        pass
+                    if last_ask != self.best_ask:
+                        pass
+                    self.best_bid = best_bid
+                    self.best_ask = best_ask
+                except ValueError:
                     pass
-
             self.i_nrow += 1
             return l_msg
         except StopIteration:
@@ -419,6 +443,9 @@ class BloombergMatching(OrderMatching):
             # print s_msg.format(self.i_agr_bid, self.i_agr_ask, i_tot)
             self.i_agr_bid = 0
             self.i_agr_ask = 0
+            self.last_date = 0
+            self.best_bid = (0, 0)
+            self.best_ask = (0, 0)
             # if self.i_nrow % 1000 == 0:
             #     print self.i_nrow
             raise StopIteration
