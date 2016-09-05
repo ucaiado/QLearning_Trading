@@ -25,7 +25,7 @@ Begin help functions
 
 class Foo(Exception):
     """
-    Foo is raised by ...
+    Foo is raised by any class to help in debuging
     """
     pass
 
@@ -346,8 +346,13 @@ class BloombergMatching(OrderMatching):
         self.last_date = 0
         self.best_bid = (0, 0)
         self.best_ask = (0, 0)
+        self.i_ofi = 0
+        self.i_ofi_10s = 0
+        self.i_qty_traded_at_bid_10s = 0
+        self.i_qty_traded_at_ask_10s = 0
         self.i_qty_traded_at_bid = 0
         self.i_qty_traded_at_ask = 0
+        self.mid_price_10s = 0.
         if i_idx:
             self.idx = i_idx
 
@@ -406,31 +411,46 @@ class BloombergMatching(OrderMatching):
                             self.i_qty_traded_at_ask += msg['order_qty']
                         else:
                             self.i_qty_traded_at_bid += msg['order_qty']
-                    elif msg['order_side'] == 'BID':
-                        self.i_agr_ask += row['Size']
-                    else:
-                        self.i_agr_bid += row['Size']
+                    # elif msg['order_side'] == 'BID':
+                    #     self.i_agr_ask += row['Size']
+                    # else:
+                    #     self.i_agr_bid += row['Size']
             # keep the bet- bid and offer in a variable
-            if row['Type'] != 'TRADE':
-                try:
-                    # TODO: split intop prie and qty
-                    last_bid = self.best_bid
-                    last_ask = self.best_ask
-                    o_aux = self.my_book
-                    best_bid = o_aux.book_bid.price_tree.max_item()
-                    best_bid = (best_bid[1].i_qty)
-                    best_ask = o_aux.book_ask.price_tree.min_item()
-                    best_ask = (best_ask[1].i_qty)
-                    raise Foo("here we are")
-                    # account OFI
-                    if last_bid != self.best_bid:
-                        pass
-                    if last_ask != self.best_ask:
-                        pass
-                    self.best_bid = best_bid
-                    self.best_ask = best_ask
-                except ValueError:
-                    pass
+            # if row['Type'] != 'TRADE':
+            i_bid_count = self.my_book.book_bid.price_tree.count
+            i_ask_count = self.my_book.book_ask.price_tree.count
+            if i_bid_count > 0 and i_ask_count > 0:
+                last_bid = self.best_bid
+                last_ask = self.best_ask
+                o_aux = self.my_book
+                best_bid = o_aux.book_bid.price_tree.max_item()
+                best_bid = (best_bid[0], best_bid[1].i_qty)
+                best_ask = o_aux.book_ask.price_tree.min_item()
+                best_ask = (best_ask[0], best_ask[1].i_qty)
+                # account OFI
+                f_en = 0.
+                if last_bid != best_bid:
+                    if best_bid[0] >= last_bid[0]:
+                        f_en += best_bid[1]
+                    if best_bid[0] <= last_bid[0]:
+                        f_en -= last_bid[1]
+                if last_ask != best_ask:
+                    if best_ask[0] <= last_ask[0]:
+                        f_en -= best_ask[1]
+                    if best_ask[0] >= last_ask[0]:
+                        f_en += last_ask[1]
+                self.i_ofi += f_en
+                self.best_bid = best_bid
+                self.best_ask = best_ask
+            # hold some variables from the start of 10s fold
+            if self.last_date % 10 == 0:
+                self.i_ofi_10s = self.i_ofi
+                self.i_ofi_10s += 1 - 1
+                self.i_qty_traded_at_bid_10s = self.i_qty_traded_at_bid
+                self.i_qty_traded_at_bid_10s += 1 - 1  # it is ugly
+                self.i_qty_traded_at_ask_10s = self.i_qty_traded_at_ask
+                self.i_qty_traded_at_ask_10s += 1 - 1
+                self.mid_price_10s = (self.best_bid[0] + self.best_ask[0])/2.
             self.i_nrow += 1
             return l_msg
         except StopIteration:
@@ -441,11 +461,18 @@ class BloombergMatching(OrderMatching):
             # s_msg = 'agr Bid: {:0,.0f}, agr Ask: {:0,.0f}, TOTAL: {:0,.0f}'
             # i_tot = self.i_agr_bid + self.i_agr_ask
             # print s_msg.format(self.i_agr_bid, self.i_agr_ask, i_tot)
-            self.i_agr_bid = 0
-            self.i_agr_ask = 0
+            # self.i_agr_bid = 0
+            # self.i_agr_ask = 0
+            self.i_qty_traded_at_bid_10s = 0
+            self.i_qty_traded_at_ask_10s = 0
+            self.i_qty_traded_at_bid = 0
+            self.i_qty_traded_at_ask = 0
+            self.i_ofi_10s = 0
+            self.i_ofi = 0
             self.last_date = 0
             self.best_bid = (0, 0)
             self.best_ask = (0, 0)
+            self.mid_price_10s = 0.
             # if self.i_nrow % 1000 == 0:
             #     print self.i_nrow
             raise StopIteration

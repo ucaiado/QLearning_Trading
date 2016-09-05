@@ -10,6 +10,8 @@ Created on 08/18/2016
 import time
 import random
 from collections import OrderedDict
+import numpy as np
+from bintrees import FastRBTree
 
 from matching_engine import BloombergMatching
 import logging
@@ -42,6 +44,7 @@ class Environment(object):
     valid_actions = [None,
                      'BEST_BID',
                      'BEST_OFFER',
+                     'BEST_BOTH',
                      'SELL',
                      'BUY']
 
@@ -87,6 +90,7 @@ class Environment(object):
                                     'Ask': 0.,
                                     'qAsk': 0,
                                     'Position': 0,
+                                    'Pnl': 0,
                                     'Agent': agent,
                                     'best_bid': False,
                                     'best_offer': False}
@@ -104,6 +108,7 @@ class Environment(object):
                                     'Ask': 0.,
                                     'qAsk': 0,
                                     'Position': 0,
+                                    'Pnl': 0,
                                     'Agent': agent,
                                     'best_bid': False,
                                     'best_offer': False}
@@ -131,6 +136,7 @@ class Environment(object):
                                         'Ask': 0.,
                                         'qAsk': 0,
                                         'Position': 0,
+                                        'Pnl': 0,
                                         'Agent': agent,
                                         'best_bid': False,
                                         'best_offer': False}
@@ -152,34 +158,43 @@ class Environment(object):
 
     def sense(self, agent):
         '''
+        Return the environment state that the agents can access
+        :param agent: Agent object. the agent that will perform the action
         '''
         assert agent in self.agent_states, 'Unknown agent!'
 
         state = self.agent_states[agent]
-        location = state['location']
-        heading = state['heading']
-        light = 'green' if (self.intersections[location].state and heading[1] != 0) or ((not self.intersections[location].state) and heading[0] != 0) else 'red'
+        # total traded in the last 10 seconds
+        i_traded_qty = self.order_matching.i_qty_traded_at_bid
+        i_traded_qty += self.order_matching.i_qty_traded_at_ask
+        i_traded_qty -= self.order_matching.i_qty_traded_at_bid_10s
+        i_traded_qty -= self.order_matching.i_qty_traded_at_ask_10s
+        # total aggressed in 10 seconds
+        i_aggr_qty = self.order_matching.i_qty_traded_at_bid
+        i_aggr_qty -= self.order_matching.i_qty_traded_at_bid_10s
+        i_aggr_qty -= self.order_matching.i_qty_traded_at_ask
+        i_aggr_qty += self.order_matching.i_qty_traded_at_ask_10s
+        # ofi in 10 seconds
+        i_ofi = self.order_matching.i_ofi
+        i_ofi -= self.order_matching.i_ofi_10s
+        # price related inputs
+        f_mid = self.order_matching.best_ask[0]
+        i_spread = (f_mid - self.order_matching.best_bid[0]) / 0.01
+        i_spread = int(np.around(i_spread, 0))  # 0.01 is the minimum tick size
+        f_mid += self.order_matching.best_bid[0]
+        f_mid /= 2.
+        f_mid_change = f_mid - self.order_matching.mid_price_10s
 
-        # Populate oncoming, left, right
-        oncoming = None
-        left = None
-        right = None
-        for other_agent, other_state in self.agent_states.iteritems():
-            if agent == other_agent or location != other_state['location'] or (heading[0] == other_state['heading'][0] and heading[1] == other_state['heading'][1]):
-                continue
-            other_heading = other_agent.get_next_waypoint()
-            if (heading[0] * other_state['heading'][0] + heading[1] * other_state['heading'][1]) == -1:
-                if oncoming != 'left':  # we don't want to override oncoming == 'left'
-                    oncoming = other_heading
-            elif (heading[1] == other_state['heading'][0] and -heading[0] == other_state['heading'][1]):
-                if right != 'forward' and right != 'left':  # we don't want to override right == 'forward or 'left'
-                    right = other_heading
-            else:
-                if left != 'forward':  # we don't want to override left == 'forward'
-                    left = other_heading
+        d_rtn = {'qOfi': i_ofi,
+                 'qAggr': i_aggr_qty,
+                 'qTraded': i_traded_qty,
+                 'spread': i_spread,
+                 'qBid': self.order_matching.best_bid[1],
+                 'qAsk': self.order_matching.best_ask[1],
+                 'midPrice': np.around(f_mid, 2),
+                 'deltaMid': f_mid_change}
 
-        # TODO: make this a namedtuple
-        return {'light': light, 'oncoming': oncoming, 'left': left, 'right': right}
+        return d_rtn
 
     def act(self, agent, action):
         '''
@@ -200,63 +215,31 @@ class Environment(object):
         for s_key in position:
             state[s_key] = position[s_key]
         state['Position'] = state['qBid'] - state['qAsk']
+        # check if it has orders in the best bid and offer
+        tree_bid = agent.d_order_tree['BID']
+        tree_ask = agent.d_order_tree['ASK']
+        # TODO: make this check just if is the main agent
+        if tree_bid.count != 0 and tree_ask.count != 0:
+            f_best_bid = tree_bid.max_key()
+            f_best_ask = tree_ask.min_key()
+            f_ask = agent.env.order_matching.best_ask[0]
+            f_bid = agent.env.order_matching.best_bid[0]
+            state['best_bid'] = f_best_bid >= f_bid
+            state['best_offer'] = f_best_bid <= f_ask
+
+        # calculate the current PnL
+        sense = self.sense(agent)
+        f_pnl = state['Ask'] - state['Bid']
+        f_pnl += state['Position'] * sense['midPrice']
+        f_pnl -= ((state['Ask'] + state['Bid']) * 0.00035)  # costs
         # measure the reward
-
         reward = 0.
+        reward = np.around(f_pnl - state['Pnl'], 2)
 
-        # location = state['location']
-        # heading = state['heading']
-        # light = 'green' if (self.intersections[location].state and heading[1] != 0) or ((not self.intersections[location].state) and heading[0] != 0) else 'red'
-        # sense = self.sense(agent)
+        # substitute the last pnl by the current value
+        state['Pnl'] = f_pnl
 
-        # # Move agent if within bounds and obeys traffic rules
-        # reward = 0  # reward/penalty
-        # move_okay = True
-        # if action == 'forward':
-        #     if light != 'green':
-        #         move_okay = False
-        # elif action == 'left':
-        #     if light == 'green' and (sense['oncoming'] == None or sense['oncoming'] == 'left'):
-        #         heading = (heading[1], -heading[0])
-        #     else:
-        #         move_okay = False
-        # elif action == 'right':
-        #     if light == 'green' or sense['left'] != 'straight':
-        #         heading = (-heading[1], heading[0])
-        #     else:
-        #         move_okay = False
-
-        # if move_okay:
-        #     # Valid move (could be null)
-        #     if action is not None:
-        #         # Valid non-null move
-        #         location = ((location[0] + heading[0] - self.bounds[0]) % (self.bounds[2] - self.bounds[0] + 1) + self.bounds[0],
-        #                     (location[1] + heading[1] - self.bounds[1]) % (self.bounds[3] - self.bounds[1] + 1) + self.bounds[1])  # wrap-around
-        #         #if self.bounds[0] <= location[0] <= self.bounds[2] and self.bounds[1] <= location[1] <= self.bounds[3]:  # bounded
-        #         state['location'] = location
-        #         state['heading'] = heading
-        #         reward = 2.0 if action == agent.get_next_waypoint() else -0.5  # valid, but is it correct? (as per waypoint)
-        #     else:
-        #         # Valid null move
-        #         reward = 0.0
-        # else:
-        #     # Invalid move
-        #     reward = -1.0
-
-        # if agent is self.primary_agent:
-        #     if state['location'] == state['destination']:
-        #         if state['deadline'] >= 0:
-        #             reward += 10  # bonus
-        #         self.done = True
-
-        #         # change this part of the code to log the messages to a file
-        #         s_msg = 'Environment.act(): Primary agent has reached destination!'  # [debug]
-        #         if DEBUG:
-        #             logging.info(s_msg)
-        #         else:
-        #             print s_msg
-        #     self.status_text = 'state: {}\naction: {}\nreward: {}'.format(agent.get_state(), action, reward)
-        #     #print 'Environment.act() [POST]: location: {}, heading: {}, action: {}, reward: {}'.format(location, heading, action, reward)  # [debug]
+        # NOTE: I could include a stop loss here
 
         return reward
 
@@ -300,6 +283,7 @@ class Agent(object):
         self.i_id = i_id
         self.state = None
         self.position = {'qAsk': 0, 'Ask': 0., 'qBid': 0, 'Bid': 0.}
+        self.d_order_tree = {'BID': FastRBTree(), 'ASK': FastRBTree()}
         self.d_order_map = {}
 
     def reset(self):
@@ -308,6 +292,7 @@ class Agent(object):
         '''
         self.state = None
         self.position = {'qAsk': 0, 'Ask': 0., 'qBid': 0, 'Bid': 0.}
+        self.d_order_tree = {'BID': FastRBTree(), 'ASK': FastRBTree()}
         self.d_order_map = {}
 
     def act(self, msg):
@@ -318,18 +303,23 @@ class Agent(object):
         # recover some variables to use
         s_status = msg['order_status']
         i_id = msg['order_id']
+        s_side = msg['order_side']
         # update position
         if s_status in ['New', 'Replaced']:
             self.d_order_map[i_id] = msg
+            self.d_order_tree[s_side].insert(msg['order_price'], msg)
         if s_status in ['Canceled', 'Expired']:
-            self.d_order_map.pop(i_id)
+            old_msg = self.d_order_map.pop(i_id)
+            self.d_order_tree[s_side].remove(old_msg['order_price'])
         elif s_status in ['Filled', 'Partially Filled']:
             # update the order map, if it was a passive trade
             if msg['agressor_indicator'] == 'Passive':
                 if s_status == 'Filled':
-                    self.d_order_map.pop(i_id)
-                else:
-                    self.d_order_map[i_id] = msg
+                    old_msg = self.d_order_map.pop(i_id)
+                    self.d_order_tree[s_side].remove(old_msg['order_price'])
+                # else:
+                    # self.d_order_map[i_id] = msg
+                    self.d_order_tree[s_side].insert(msg['order_price'], msg)
             # account the trades
             s_tside = self.trade_side[msg['agressor_indicator']]
             s_tside = s_tside[msg['order_side']]
@@ -453,11 +443,10 @@ class ZombieAgent(Agent):
         #     self.next_waypoint = random.choice(Environment.valid_actions[1:])
         # reward = self.env.act(self, action)
 
-        # inputs = self.env.sense(self)
-        inputs = {}  # TODO: correct that
+        inputs = self.env.sense(self)
         state = self.env.agent_states[self]
 
-        # Update state (position ,volume and if keep an order in bid or ask)
+        # Update state (position ,volume and if has an order in bid or ask)
         self.state = self._get_intern_state(inputs, state)
 
         # Select action according to the agent's policy
@@ -473,13 +462,13 @@ class ZombieAgent(Agent):
         # [debug]
         s_rtn = 'ZombieAgent.update(): position = {}, inputs = {}, action'
         s_rtn += ' = {}, reward = {}'
-        # if DEBUG:
-        #     root.debug(s_rtn.format(state['Position'],
-        #                             inputs,
-        #                             action,
-        #                             reward))
-        # else:
-        #     print s_rtn.format(state['Position'],
-        #                        inputs,
-        #                        action['action'],
-        #                        reward)
+        if DEBUG:
+            root.debug(s_rtn.format(state['Position'],
+                                    inputs,
+                                    action,
+                                    reward))
+        else:
+            print s_rtn.format(state['Position'],
+                               inputs,
+                               action['action'],
+                               reward)
