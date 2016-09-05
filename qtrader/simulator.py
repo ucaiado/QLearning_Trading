@@ -29,8 +29,12 @@ class Simulator(object):
     """
     Simulates agents in a dynamic order book environment.
     """
-    def __init__(self, env, size=None, update_delay=1.0, display=True):
+    def __init__(self, env, update_delay=1.0, display=True):
         '''
+        Initiate a Simulator object. Save all parameters as attributes
+        Environment Object. The Environment where the agent acts
+        :*param update_delay: Float. Seconds elapsed to print out the book
+        :*param display: Boolean. If should open a visualizer
         '''
         self.env = env
 
@@ -44,11 +48,13 @@ class Simulator(object):
 
     def run(self, n_trials=1):
         '''
+        Run the simulation
+        :param n_trials: integer. Number of files to read
         '''
-        self.quit = False
-        n_trial = min(n_trials, self.env.order_book.max_nfiles)
+        n_trial = min(n_trials, self.env.order_matching.max_nfiles)
         for trial in xrange(n_trials):
-            print 'Simulator.run(): Trial {}'.format(trial)  # [debug]
+            self.quit = False
+            print 'Simulator.run(): Trial {}'.format(trial + 1)  # [debug]
             self.env.reset()
             self.current_time = 0.0
             self.last_updated = 0.0
@@ -57,12 +63,12 @@ class Simulator(object):
                 try:
                     # Update current time
                     self.current_time = time.time() - self.start_time
-
                     # Update environment
                     f_time_step = self.current_time - self.last_updated
-                    self.env.step()
+                    l_msg = self.env.step()
                     # print information to be ploted by a visualization
                     if f_time_step >= self.update_delay:
+                        # TODO: Print out the scenario to be visualized
                         pass
                         self.last_updated = self.current_time
                 except StopIteration:
@@ -73,5 +79,5 @@ class Simulator(object):
                     if self.quit or self.env.done:
                         break
 
-            if self.quit:
-                break
+            # if self.quit:
+            #     break
