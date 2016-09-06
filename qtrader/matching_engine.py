@@ -30,12 +30,200 @@ class Foo(Exception):
     pass
 
 
+def translate_trades(idx, row, my_book):
+    '''
+    Translate trade row into trades messages. Just translate the row if the
+    trade occurs at the best price
+    :param idx: integer. Order entry step
+    :param row: dict. the original message from file
+    :param my_book: Book object.
+    '''
+    l_msg = []
+    # check which side was affected
+    # test bid side
+    s_side = 'BID'
+    # get the best bid price
+    obj_price = my_book.get_orders_by_price(s_side, b_rtn_obj=True)
+    if obj_price:
+        # if row['Price'] > obj_price.f_price:
+        if row['Price'] != obj_price.f_price:
+            obj_price = None
+    # test ask side, if it is the case
+    if not obj_price:
+        s_side = 'ASK'
+        obj_price = my_book.get_orders_by_price(s_side, b_rtn_obj=True)
+        if obj_price:
+            # if row['Price'] < obj_price.f_price:
+            if row['Price'] != obj_price.f_price:
+                return l_msg
+        else:
+            return l_msg
+    # in case the traded qty is bigger than the price level qty, terminate
+    if obj_price.i_qty < row['Size']:
+        return l_msg
+    # translate row in message
+    i_qty = row['Size']
+    for idx_ord, order_aux in obj_price.order_tree.nsmallest(1000):
+        # define how much should be traded
+        i_qty_traded = order_aux['org_total_qty_order']
+        i_qty_traded -= order_aux['traded_qty_order']  # remain
+        i_qty_traded = min(i_qty, i_qty_traded)  # minimum remain and trade
+        i_qty -= i_qty_traded  # discount the traded qty
+        # define the status of the message
+        if order_aux['total_qty_order'] == i_qty_traded:
+            s_status = 'Filled'
+        else:
+            s_status = 'Partially Filled'
+        assert i_qty >= 0, 'Qty traded smaller than 0'
+        # create the message
+        i_qty2 = i_qty_traded + 1 - 1
+        i_qty_traded += order_aux['traded_qty_order']
+        s_action = s_side
+        s_action = 'BUY'
+        # if one  makes a trade at bid, it is a sell
+        if s_side == 'ASK':
+            s_action = 'SELL'
+        d_rtn = {'agent_id': order_aux['agent_id'],
+                 'instrumento_symbol': 'PETR4',
+                 'order_id': order_aux['order_id'],
+                 'order_entry_step': idx,
+                 'new_order_id': order_aux['order_id'],
+                 'order_price': row['Price'],
+                 'order_side': s_side,
+                 'order_status': s_status,
+                 'total_qty_order': order_aux['org_total_qty_order'],
+                 'traded_qty_order': i_qty_traded,
+                 'agressor_indicator': 'Passive',
+                 'order_qty': i_qty2,
+                 'action': s_action}
+        l_msg.append(d_rtn.copy())
+        # create another message to update who took the action
+        s_action = 'BUY'
+        # if one  makes a trade at bid, it is a sell
+        if s_side == 'BID':
+            s_action = 'SELL'
+        d_rtn = {'agent_id': order_aux['agent_id'],
+                 'instrumento_symbol': 'PETR4',
+                 'order_id': order_aux['order_id'],
+                 'order_entry_step': idx,
+                 'new_order_id': order_aux['order_id'],
+                 'order_price': row['Price'],
+                 'order_side': s_side,
+                 'order_status': 'Filled',
+                 'total_qty_order': order_aux['org_total_qty_order'],
+                 'traded_qty_order': i_qty_traded,
+                 'agressor_indicator': 'Agressive',
+                 'order_qty': i_qty2,
+                 'action': s_action}
+        l_msg.append(d_rtn.copy())
+    return l_msg
+
 '''
 End help functions
 '''
 
 
 def translate_row(idx, row, my_book):
+    '''
+    Translate a line from a file of the bloomberg level I data
+    :param idx: integer. Order entry step
+    :param row: dict. the original message from file
+    :param my_book: Book object.
+    '''
+    # TODO: when the row is from my agent, it should modify the order book
+    # to acomodate it in a way that, when happen a trade, for instance, the
+    # final state of the book is the same with my agent or not
+    l_msg = []
+    row['Price'] = float(row['Price'])
+    row['Size'] = float(row['Size'])
+    if row['Price'] == 0. or row['Size'] % 100 != 0:
+        return l_msg
+    if row['Type'] == 'TRADE':
+        l_msg_aux = translate_trades(idx, row, my_book)
+        if len(l_msg_aux) == 0:
+            return l_msg
+        l_msg += l_msg_aux
+
+    else:
+        # recover the best price from the row side that is not just the primary
+        f_best_price = my_book.get_best_price(row['Type'])
+        i_order_id = my_book.i_last_order_id + 1
+        # check if there are orders in the row price
+        obj_ordtree = my_book.get_orders_by_price(row['Type'],
+                                                  row['Price'])
+        if obj_ordtree:
+            # cant present more than 2 orders (mine and market)
+            assert len(obj_ordtree) <= 2, 'More than two offers'
+            # TODO: get the first order
+            obj_order = obj_ordtree.nsmallest(1)[0][1]
+            # check if should cancel the best price
+            b_cancel = False
+            # check if the price in the row in smaller
+            if row['Type'] == 'BID' and row['Price'] < f_best_price:
+                # TODO: recover orders from the best price
+                obj_ordtree2 = my_book.get_orders_by_price(row['Type'])
+                best_order = obj_ordtree2.nsmallest(1)[0][1]
+                # and cancel them
+                d_rtn = best_order.d_msg
+                d_rtn['order_status'] = 'Canceled'
+                d_rtn['action'] = None
+                l_msg.append(d_rtn.copy())
+            elif row['Type'] == 'ASK' and row['Price'] > f_best_price:
+                # TODO: recover orders from the best price
+                obj_ordtree2 = my_book.get_orders_by_price(row['Type'])
+                best_order = obj_ordtree2.nsmallest(1)[0][1]
+                # and cancel them
+                d_rtn = best_order.d_msg
+                d_rtn['order_status'] = 'Canceled'
+                d_rtn['action'] = None
+                l_msg.append(d_rtn.copy())
+            # replace the current order
+            i_new_id = obj_order.main_id
+            if row['Size'] > obj_order['total_qty_order']:
+                i_new_id = my_book.i_last_order_id + 1
+                d_rtn = obj_order.d_msg
+                d_rtn['order_status'] = 'Canceled'
+                d_rtn['action'] = None
+                l_msg.append(d_rtn.copy())
+            # Replace the order
+            s_action = 'BEST_BID'
+            if row['Type'] == 'ASK':
+                s_action = 'BEST_OFFER'
+            d_rtn = {'agent_id': 10,
+                     'instrumento_symbol': 'PETR4',
+                     'order_id': i_new_id,
+                     'order_entry_step': idx,
+                     'new_order_id': i_new_id,
+                     'order_price': row['Price'],
+                     'order_side': row['Type'],
+                     'order_status': 'Replaced',
+                     'total_qty_order': row['Size'],
+                     'traded_qty_order': 0,
+                     'agressor_indicator': 'Neutral',
+                     'action': s_action}
+            l_msg.append(d_rtn.copy())
+        else:
+            # if the price is not still in the book, include a new order
+            s_action = 'BEST_BID'
+            if row['Type'] == 'ASK':
+                s_action = 'BEST_OFFER'
+            d_rtn = {'agent_id': 10,
+                     'instrumento_symbol': 'PETR4',
+                     'order_id': my_book.i_last_order_id + 1,
+                     'order_entry_step': idx,
+                     'new_order_id': my_book.i_last_order_id + 1,
+                     'order_price': row['Price'],
+                     'order_side': row['Type'],
+                     'order_status': 'New',
+                     'total_qty_order': row['Size'],
+                     'traded_qty_order': 0,
+                     'agressor_indicator': 'Neutral',
+                     'action': s_action}
+            l_msg.append(d_rtn)
+    return l_msg
+
+
+def translate_row_old(idx, row, my_book):
     '''
     Translate a line from a file of the bloomberg level I data
     :param idx: integer.
@@ -200,85 +388,6 @@ def translate_row(idx, row, my_book):
                      'action': s_action}
             l_msg.append(d_rtn)
     return l_msg
-
-
-def translate_row_old(idx, row, my_book):
-    '''
-    Translate a line from a file of the bloomberg level I data
-    :param idx: integer.
-    :param row: dict.
-    :param my_book: Book object.
-    '''
-    l_msg = []
-    row['Price'] = float(row['Price'])
-    row['Size'] = float(row['Size'])
-    if row['Price'] == 0.:
-        return l_msg
-    if row['Type'] != 'TRADE' and row['Size'] % 100 == 0:
-        # recover the best price
-        f_best_price = my_book.get_best_price(row['Type'])
-        i_order_id = my_book.i_last_order_id + 1
-        # check if there is orders in the row price
-        obj_ordtree = my_book.get_orders_by_price(row['Type'],
-                                                  row['Price'])
-        if obj_ordtree:
-            # cant present more than 2 orders (mine and market)
-            assert len(obj_ordtree) <= 2, 'More than two offers'
-            # get the first order
-            obj_order = obj_ordtree.nsmallest(1)[0][1]
-            # check if should cancel the best price
-            b_cancel = False
-            if row['Type'] == 'BID' and row['Price'] < f_best_price:
-                # check if the price in the row in smaller
-                obj_ordtree2 = my_book.get_orders_by_price(row['Type'])
-                best_order = obj_ordtree2.nsmallest(1)[0][1]
-                d_rtn = best_order.d_msg
-                d_rtn['order_status'] = 'Canceled'
-                l_msg.append(d_rtn.copy())
-            elif row['Type'] == 'ASK' and row['Price'] > f_best_price:
-                obj_ordtree2 = my_book.get_orders_by_price(row['Type'])
-                best_order = obj_ordtree2.nsmallest(1)[0][1]
-                d_rtn = best_order.d_msg
-                d_rtn['order_status'] = 'Canceled'
-                l_msg.append(d_rtn.copy())
-
-            # replace the current order
-            i_old_id = obj_order.main_id
-            i_new_id = obj_order.main_id
-            if row['Size'] > obj_order['total_qty_order']:
-                i_new_id = my_book.i_last_order_id + 1
-                d_rtn = obj_order.d_msg
-                d_rtn['order_status'] = 'Canceled'
-                l_msg.append(d_rtn.copy())
-
-            # Replace the order
-            d_rtn = {'agent_id': 10,
-                     'instrumento_symbol': 'PETR4',
-                     'order_id': i_new_id,
-                     'order_entry_step': idx,
-                     'new_order_id': i_new_id,
-                     'order_price': row['Price'],
-                     'order_side': row['Type'],
-                     'order_status': 'Replaced',
-                     'total_qty_order': row['Size'],
-                     'traded_qty_order': 0,
-                     'agressor_indicator': 'Neutral'}
-            l_msg.append(d_rtn.copy())
-        else:
-            # if the price is not still in the book, include a new order
-            d_rtn = {'agent_id': 10,
-                     'instrumento_symbol': 'PETR4',
-                     'order_id': my_book.i_last_order_id + 1,
-                     'order_entry_step': idx,
-                     'new_order_id': my_book.i_last_order_id + 1,
-                     'order_price': row['Price'],
-                     'order_side': row['Type'],
-                     'order_status': 'New',
-                     'total_qty_order': row['Size'],
-                     'traded_qty_order': 0,
-                     'agressor_indicator': 'Neutral'}
-            l_msg.append(d_rtn)
-        return l_msg
 
 
 class OrderMatching(object):
