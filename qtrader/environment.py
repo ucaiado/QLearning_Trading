@@ -148,11 +148,15 @@ class Environment(object):
         agents
         '''
         # Update agents asking to the order matching what each one has done
+        # check if should update the primary
         l_msg = self.order_matching.next()
-        # i_time = self.order_matching.last_date
+        if self.primary_agent:
+            if self.order_matching.last_date >= self.primary_agent.next_time:
+                msg = {'action': None}
+                self.update_agent_state(agent=self.primary_agent, msg=msg)
+        # update the agents
         for msg in l_msg:
             agent_aux = self.agent_states[msg['agent_id']]['Agent']
-            # self.update_agent_state(agent=agent_aux, i_time=i_time, msg=msg)
             self.update_agent_state(agent=agent_aux, msg=msg)
 
         self.t += 1
@@ -254,12 +258,12 @@ class Environment(object):
         '''
         assert agent in self.agent_states, 'Unknown agent!'
         # agent.update(s_msg=msg, i_time=i_time)
-        agent.update(s_msg=msg)
         for s_key in ['qBid', 'Bid', 'Ask', 'qAsk']:
             self.agent_states[agent][s_key] = agent[s_key]
         qBid = self.agent_states[agent]['qBid']
         qAsk = self.agent_states[agent]['qAsk']
         self.agent_states[agent]['Position'] = qBid - qAsk
+        agent.update(s_msg=msg)
 
     def get_order_book(self):
         '''

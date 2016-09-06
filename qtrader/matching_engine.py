@@ -415,8 +415,11 @@ class BloombergMatching(OrderMatching):
                     #     self.i_agr_ask += row['Size']
                     # else:
                     #     self.i_agr_bid += row['Size']
+            # if it is a trade, terminate
+            # if row['Type'] == 'TRADE':
+            #     self.i_nrow += 1
+            #     return l_msg
             # keep the bet- bid and offer in a variable
-            # if row['Type'] != 'TRADE':
             i_bid_count = self.my_book.book_bid.price_tree.count
             i_ask_count = self.my_book.book_ask.price_tree.count
             if i_bid_count > 0 and i_ask_count > 0:
@@ -451,6 +454,7 @@ class BloombergMatching(OrderMatching):
                 self.i_qty_traded_at_ask_10s = self.i_qty_traded_at_ask
                 self.i_qty_traded_at_ask_10s += 1 - 1
                 self.mid_price_10s = (self.best_bid[0] + self.best_ask[0])/2.
+            # terminate
             self.i_nrow += 1
             return l_msg
         except StopIteration:
