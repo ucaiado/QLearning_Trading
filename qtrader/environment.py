@@ -163,12 +163,12 @@ class Environment(object):
         # check if the prices are diffetent
         best_bid = self.order_matching.best_bid
         best_ask = self.order_matching.best_ask
-        if best_bid[0] != 0 and best_ask[0] != 0:
-            if best_bid[0] >= best_ask[0]:
-                print self.order_matching.row['Date']
-                print self.order_matching.my_book.get_n_top_prices(5)
-                print ''
-                # raise Foo('Bid and Ask are the same')
+        # if best_bid[0] != 0 and best_ask[0] != 0:
+        #     if best_bid[0] >= best_ask[0]:
+        #         print self.order_matching.row['Date']
+        #         print self.order_matching.my_book.get_n_top_prices(5)
+        #         print ''
+        #         # raise Foo('Bid and Ask are the same')
         # check if the market is closed
         if self.order_matching.last_date >= (16*60**2 + 50 * 60):
             self.done = True

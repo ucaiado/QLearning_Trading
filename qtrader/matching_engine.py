@@ -30,37 +30,42 @@ class Foo(Exception):
     pass
 
 
-def translate_trades(idx, row, my_ordmatch):
+def translate_trades(idx, row, my_ordmatch, s_side=None):
     '''
     Translate trade row into trades messages. Just translate the row if the
     trade occurs at the current best price
     :param idx: integer. Order entry step
     :param row: dict. the original message from file
     :param my_ordmatch: OrderMatching object.
+    :*param s_side: string. 'BID' or 'ASK'. Determine the side of the trade
     '''
     my_book = my_ordmatch.my_book
     l_msg = []
-    # check which side was affected
-    # test bid side
-    s_side = 'BID'
-    # get the best bid price
-    # obj_price = my_book.get_orders_by_price(s_side, b_rtn_obj=True)
-    obj_price = my_ordmatch.obj_best_bid
-    if obj_price:
-        # if row['Price'] > obj_price.f_price:
-        if row['Price'] != obj_price.f_price:
-            obj_price = None
-    # test ask side, if it is the case
-    if not obj_price:
-        s_side = 'ASK'
-        # obj_price = my_book.get_orders_by_price(s_side, b_rtn_obj=True)
-        obj_price = my_ordmatch.obj_best_ask
+    if s_side:
+        if s_side == 'BID':
+            obj_price = my_ordmatch.obj_best_bid
+        elif s_side == 'ASK':
+            obj_price = my_ordmatch.obj_best_ask
+    else:
+        # check which side was affected
+        # test bid side
+        s_side = 'BID'
+        # get the best bid price
+        obj_price = my_ordmatch.obj_best_bid
         if obj_price:
-            # if row['Price'] < obj_price.f_price:
+            # if row['Price'] > obj_price.f_price:
             if row['Price'] != obj_price.f_price:
+                obj_price = None
+        # test ask side, if it is the case
+        if not obj_price:
+            s_side = 'ASK'
+            obj_price = my_ordmatch.obj_best_ask
+            if obj_price:
+                # if row['Price'] < obj_price.f_price:
+                if row['Price'] != obj_price.f_price:
+                    return l_msg
+            else:
                 return l_msg
-        else:
-            return l_msg
     # in case the traded qty is bigger than the price level qty, terminate
     if obj_price.i_qty < row['Size']:
         return l_msg
@@ -128,12 +133,13 @@ End help functions
 '''
 
 
-def translate_row(idx, row, my_ordmatch):
+def translate_row(idx, row, my_ordmatch, s_side=None):
     '''
     Translate a line from a file of the bloomberg level I data
     :param idx: integer. Order entry step
     :param row: dict. the original message from file
     :param my_ordmatch: OrderMatching object.
+    :*param s_side: string. 'BID' or 'ASK'. Determine the side of the trade
     '''
     # reconver some variables and check if it is a valid row
     my_book = my_ordmatch.my_book
@@ -144,7 +150,7 @@ def translate_row(idx, row, my_ordmatch):
         return l_msg
     # update when it is a trade
     if row['Type'] == 'TRADE':
-        l_msg_aux = translate_trades(idx, row, my_ordmatch)
+        l_msg_aux = translate_trades(idx, row, my_ordmatch, s_side)
         if len(l_msg_aux) == 0:
             return l_msg
         l_msg += l_msg_aux
@@ -423,6 +429,7 @@ class BloombergMatching(OrderMatching):
         self.i_qty_traded_at_bid = 0
         self.i_qty_traded_at_ask = 0
         self.mid_price_10s = 0.
+        self.b_get_new_row = True
         if i_idx:
             self.idx = i_idx
 
@@ -432,13 +439,14 @@ class BloombergMatching(OrderMatching):
         '''
         return self.l_fnames[int(self.idx)].filename
 
-    def reshape_row(self, idx, row):
+    def reshape_row(self, idx, row, s_side=None):
         '''
         Translate a line from a file of the bloomberg level I data
         :param idx: integer.
         :param row: dict.
+        :*param s_side: string. 'BID' or 'ASK'. Determine the side of the trade
         '''
-        return translate_row(idx, row, self)
+        return translate_row(idx, row, self, s_side)
 
     def reset(self):
         '''
@@ -476,14 +484,43 @@ class BloombergMatching(OrderMatching):
             self.my_book = book.LimitOrderBook(self.s_instrument)
         # try to read a row of an already opened file
         try:
-            row = self.fr_open.next()
-            self.row = row
+            # check if should get a new row form the file
+            l_msg = []
+            if self.b_get_new_row:
+                row = self.fr_open.next()
+                self.row = row
+            else:
+                print 'corrected'
+                print self.my_book.get_n_top_prices(5)
+                print ''
+                row = self.row
+                self.b_get_new_row = True
+            # check if the prices have crossed themselfs
+            if self.best_bid[0] != 0 and self.best_ask[0] != 0:
+                if self.best_bid[0] >= self.best_ask[0]:
+                    self.b_get_new_row = False
+                    row_aux = row.copy()
+                    row_aux['Type'] = 'TRADE'
+                    row_aux['Size'] = min(self.best_ask[1], self.best_bid[1])
+                    # determine a trade to this round
+                    row = row_aux.copy()
+                    # reshape the row to messages to order book
+                    l_msg_aux = self.reshape_row(self.i_nrow, row, 'BID')
+                    l_msg = self.reshape_row(self.i_nrow, row, 'ASK')
+                    l_msg += l_msg_aux
+                    print self.row['Date']
+                    # pprint.pprint(l_msg)
+                    print self.my_book.get_n_top_prices(5)
+                    print ''
+            # reshape the row to messages to order book when it wasnt yet
+            if len(l_msg) == 0:
+                # reshape the row to messages to order book
+                l_msg = self.reshape_row(self.i_nrow, row)
             # measure the time in seconds
             l_aux = row['Date'].split(' ')[1].split(':')
             i_aux = sum([int(a)*60**b for a, b in zip(l_aux, [2, 1, 0])])
             self.last_date = i_aux
-            # reshape the row to messages to order book
-            l_msg = self.reshape_row(self.i_nrow, row)
+            # update the book
             if l_msg:
                 # process each message generated by translator
                 for msg in l_msg:
@@ -501,15 +538,7 @@ class BloombergMatching(OrderMatching):
                             self.i_qty_traded_at_ask += msg['order_qty']
                         else:
                             self.i_qty_traded_at_bid += msg['order_qty']
-                    # elif msg['order_side'] == 'BID':
-                    #     self.i_agr_ask += row['Size']
-                    # else:
-                    #     self.i_agr_bid += row['Size']
-            # if it is a trade, terminate
-            # if row['Type'] == 'TRADE':
-            #     self.i_nrow += 1
-            #     return l_msg
-            # keep the bet- bid and offer in a variable
+            # keep the best- bid and offer in a variable
             i_bid_count = self.my_book.book_bid.price_tree.count
             i_ask_count = self.my_book.book_ask.price_tree.count
             if i_bid_count > 0 and i_ask_count > 0:
@@ -552,13 +581,6 @@ class BloombergMatching(OrderMatching):
         except StopIteration:
             self.i_nrow = 0
             self.idx += 1
-            # print self.my_book.get_n_top_prices(5)
-            # print ""
-            # s_msg = 'agr Bid: {:0,.0f}, agr Ask: {:0,.0f}, TOTAL: {:0,.0f}'
-            # i_tot = self.i_agr_bid + self.i_agr_ask
-            # print s_msg.format(self.i_agr_bid, self.i_agr_ask, i_tot)
-            # self.i_agr_bid = 0
-            # self.i_agr_ask = 0
             self.i_qty_traded_at_bid_10s = 0
             self.i_qty_traded_at_ask_10s = 0
             self.i_qty_traded_at_bid = 0
@@ -571,6 +593,4 @@ class BloombergMatching(OrderMatching):
             self.obj_best_bid = None
             self.obj_best_ask = None
             self.mid_price_10s = 0.
-            # if self.i_nrow % 1000 == 0:
-            #     print self.i_nrow
             raise StopIteration
