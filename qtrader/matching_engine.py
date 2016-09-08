@@ -505,7 +505,9 @@ class BloombergMatching(OrderMatching):
                     # determine a trade to this round
                     row = row_aux.copy()
                     # reshape the row to messages to order book
+                    row['Price'] = self.best_bid[0]
                     l_msg_aux = self.reshape_row(self.i_nrow, row, 'BID')
+                    row['Price'] = self.best_ask[0]
                     l_msg = self.reshape_row(self.i_nrow, row, 'ASK')
                     l_msg += l_msg_aux
                     print self.row['Date']
