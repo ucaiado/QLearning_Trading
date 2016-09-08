@@ -94,7 +94,10 @@ def make_zip_file(s_fname):
                             if float(s_last) > f_ask:
                                 if float(s_last) == float(d_row['Price']):
                                     s_msg = '{},{},ASK,{},{}\n'
-                                    i_qaux = int(d_row['Size'])+i_qty
+                                    i_qaux = 0
+                                    if d_row['Type'] == 'ASK':
+                                        i_qaux = int(d_row['Size'])
+                                    i_qaux += i_qty
                                     s_msg = s_msg.format(i_id,
                                                          s_time,
                                                          s_last,
@@ -110,7 +113,10 @@ def make_zip_file(s_fname):
                                     i_id += 1
                             elif float(s_last) < f_bid:
                                 if float(s_last) == float(d_row['Price']):
-                                    i_qaux = int(d_row['Size']) + i_qty
+                                    i_qaux = 0
+                                    if d_row['Type'] == 'BID':
+                                        i_qaux = int(d_row['Size'])
+                                    i_qaux += i_qty
                                     s_msg = '{},{},BID,{},{}\n'.format(i_id,
                                                                        s_time,
                                                                        s_last,

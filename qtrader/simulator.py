@@ -51,7 +51,7 @@ class Simulator(object):
         Run the simulation
         :param n_trials: integer. Number of files to read
         '''
-        n_trial = min(n_trials, self.env.order_matching.max_nfiles-1)
+        n_trials = min(n_trials, self.env.order_matching.max_nfiles)
         for trial in xrange(n_trials):
             self.quit = False
             print 'Simulator.run(): Trial {}'.format(trial + 1)  # [debug]
