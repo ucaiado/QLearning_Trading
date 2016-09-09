@@ -149,26 +149,17 @@ class Environment(object):
         agents
         '''
         # Update agents asking to the order matching what each one has done
-        # check if should update the primary
         l_msg = self.order_matching.next()
-        # if self.primary_agent:
-        #     if self.order_matching.last_date >= self.primary_agent.next_time:
-        #         msg = {'action': None}
-        #         self.update_agent_state(agent=self.primary_agent, msg=msg)
+        l_msg_aux = []
         # update the agents
         for msg in l_msg:
             agent_aux = self.agent_states[msg['agent_id']]['Agent']
             self.update_agent_state(agent=agent_aux, msg=msg)
-
-        # check if the prices are diffetent
-        best_bid = self.order_matching.best_bid
-        best_ask = self.order_matching.best_ask
-        # if best_bid[0] != 0 and best_ask[0] != 0:
-        #     if best_bid[0] >= best_ask[0]:
-        #         print self.order_matching.row['Date']
-        #         print self.order_matching.my_book.get_n_top_prices(5)
-        #         print ''
-        #         # raise Foo('Bid and Ask are the same')
+        # check if should update the primary
+        if self.primary_agent:
+            if self.primary_agent.should_update():
+                self.update_agent_state(agent=self.primary_agent,
+                                        msg=None)
         # check if the market is closed
         if self.order_matching.last_date >= (16*60**2 + 50 * 60):
             self.done = True
@@ -242,7 +233,7 @@ class Environment(object):
         # check if it has orders in the best bid and offer
         tree_bid = agent.d_order_tree['BID']
         tree_ask = agent.d_order_tree['ASK']
-        # TODO: make this check just if is the main agent
+        # Check if the agent has orders at the best prices
         if tree_bid.count != 0 and tree_ask.count != 0:
             f_best_bid = tree_bid.max_key()
             f_best_ask = tree_ask.min_key()
@@ -274,12 +265,14 @@ class Environment(object):
         :param agent: Agent Object. The agent used as primary
         :param msg: dict. Order matching message
         '''
+        # hold current information about position
         assert agent in self.agent_states, 'Unknown agent!'
         for s_key in ['qBid', 'Bid', 'Ask', 'qAsk']:
             self.agent_states[agent][s_key] = agent[s_key]
         qBid = self.agent_states[agent]['qBid']
         qAsk = self.agent_states[agent]['qAsk']
         self.agent_states[agent]['Position'] = qBid - qAsk
+        # execute new action that can change current position
         agent.update(msg=msg)
 
     def get_order_book(self):
@@ -287,6 +280,16 @@ class Environment(object):
         Return a dataframe with the first 5 levels of the current order book
         '''
         return self.order_matching.my_book.get_n_top_prices(5)
+
+    def update_order_book(self, l_msg):
+        '''
+        Update the Book and all information related to it
+        :param l_msg: list. messages to use to update the book
+        '''
+        if isinstance(l_msg, dict):
+            l_msg = [l_msg]
+        if len(l_msg) > 0:
+            self.order_matching.update(l_msg, b_print=False)
 
 
 class Agent(object):
