@@ -10,12 +10,14 @@ Created on 08/18/2016
 import random
 from environment import Agent, Environment
 from simulator import Simulator
+import matching_engine
 import logging
 import sys
 import time
 from bintrees import FastRBTree
 from collections import defaultdict
 import pandas as pd
+import pprint
 
 # Log finle enabled. global variable
 DEBUG = False
@@ -91,6 +93,8 @@ class BasicAgent(Agent):
         '''
         Return a boolean informing if it is time to update the agent
         '''
+        if self.env.i_nrow < 5:
+            return False
         return self.env.order_matching.last_date >= self.next_time
         # return False
 
@@ -116,11 +120,13 @@ class BasicAgent(Agent):
         # # Execute action and get reward
         # print '\ncurrent action: {}\n'.format(action)
         reward = 0
+        # pprint.pprint(l_msg)
         self.env.update_order_book(l_msg)
         s_action = None
         for msg in l_msg:
-            s_action = msg['action']
-            reward += self.env.act(self, msg)
+            if msg['agent_id'] == self.i_id:
+                s_action = msg['action']
+                reward += self.env.act(self, msg)
 
         # Learn policy based on state, action, reward
         self._apply_policy(self.state, s_action, reward)
@@ -128,7 +134,7 @@ class BasicAgent(Agent):
         self.next_time = self.env.order_matching.last_date
         self.next_time += self.f_min_time
 
-        # [debug]
+        # print agent inputs
         s_date = self.env.order_matching.row['Date']
         s_rtn = 'BasicAgent.update(): position = {}, inputs = {}, action'
         s_rtn += ' = {}, reward = {}, time = {}'
@@ -164,7 +170,8 @@ class BasicAgent(Agent):
             if msg['order_status'] in ['Filled', 'Partialy Filled']:
                 return [msg]
         # select a randon action
-        s_action = random.choice(Environment.valid_actions)
+        s_action = random.choice(self.env.valid_actions)
+        s_action = random.choice(['BUY', 'SELL'])
         # build a list of messages based on the action taken
         l_msg = self._translate_action(t_state, s_action)
         return l_msg
@@ -175,6 +182,28 @@ class BasicAgent(Agent):
         :param t_state: tuple. The inputs to be considered by the agent
         :param s_action: string. The action taken
         '''
+        my_ordmatch = self.env.order_matching
+        row = my_ordmatch.row.copy()
+        idx = self.env.i_nrow
+        i_id = self.i_id
+        row['Size'] = 100.
+        # generate trade
+        if s_action == 'BUY':
+            row['Type'] = 'TRADE'
+            row['Price'] = self.env.best_bid[0]
+            return matching_engine.translate_trades(idx,
+                                                    row,
+                                                    my_ordmatch,
+                                                    'BID',
+                                                    i_id)
+        elif s_action == 'SELL':
+            row['Type'] = 'TRADE'
+            row['Price'] = self.env.best_ask[0]
+            return matching_engine.translate_trades(idx,
+                                                    row,
+                                                    my_ordmatch,
+                                                    'ASK',
+                                                    i_id)
         return []
 
     def _apply_policy(self, state, action, reward):

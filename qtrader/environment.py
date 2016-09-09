@@ -76,6 +76,35 @@ class Environment(object):
                                                 i_num_agents=i_naux,
                                                 s_fname=s_fname)
 
+        # define the best bid and offer attributes
+        self._best_bid = self.order_matching.best_bid
+        self._best_ask = self.order_matching.best_ask
+        self._i_nrow = self.order_matching.i_nrow
+
+    @property
+    def i_nrow(self):
+        '''
+        Access the last idx row used by order matching
+        '''
+        self._i_nrow = self.order_matching.i_nrow
+        return self._i_nrow
+
+    @property
+    def best_bid(self):
+        '''
+        Access the best bid from order matching
+        '''
+        self._best_bid = self.order_matching.best_bid
+        return self._best_bid
+
+    @property
+    def best_ask(self):
+        '''
+        Access the best ask from order matching
+        '''
+        self._best_ask = self.order_matching.best_ask
+        return self._best_ask
+
     def create_agent(self, agent_class, *args, **kwargs):
         '''
         Include a agent in the environment and initiate its env state

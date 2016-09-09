@@ -30,7 +30,7 @@ class Foo(Exception):
     pass
 
 
-def translate_trades(idx, row, my_ordmatch, s_side=None):
+def translate_trades(idx, row, my_ordmatch, s_side=None, i_id=None):
     '''
     Translate trade row into trades messages. Just translate the row if the
     trade occurs at the current best price
@@ -72,6 +72,11 @@ def translate_trades(idx, row, my_ordmatch, s_side=None):
     # translate row in message
     i_qty = row['Size']
     for idx_ord, order_aux in obj_price.order_tree.nsmallest(1000):
+        # check the id of the aggressor
+        if not i_id:
+            i_agrr = 10
+        else:
+            i_agrr = i_id
         # define how much should be traded
         i_qty_traded = order_aux['org_total_qty_order']
         i_qty_traded -= order_aux['traded_qty_order']  # remain
@@ -106,12 +111,14 @@ def translate_trades(idx, row, my_ordmatch, s_side=None):
                  'action': s_action,
                  'original_id': row['']}
         l_msg.append(d_rtn.copy())
+        # check the id of the aggressive side
+
         # create another message to update who took the action
         s_action = 'BUY'
         # if one  makes a trade at bid, it is a sell
         if s_side == 'BID':
             s_action = 'SELL'
-        d_rtn = {'agent_id': order_aux['agent_id'],
+        d_rtn = {'agent_id': i_agrr,
                  'instrumento_symbol': 'PETR4',
                  'order_id': order_aux['order_id'],
                  'order_entry_step': idx,
