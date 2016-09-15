@@ -78,6 +78,7 @@ class BasicAgent(Agent):
         # Initialize any additional variables here
         self.f_min_time = f_min_time
         self.next_time = 0.
+        self.max_pos = 400.
 
     def reset(self):
         '''
@@ -169,9 +170,21 @@ class BasicAgent(Agent):
         if msg:
             if msg['order_status'] in ['Filled', 'Partialy Filled']:
                 return [msg]
-        # select a randon action
-        s_action = random.choice(self.env.valid_actions)
-        s_action = random.choice(['BUY', 'SELL'])
+        # select a randon action, but not trade more than the maximum position
+        valid_actions = [None, 'BEST_BID', 'BEST_OFFER', 'BEST_BOTH',
+                         'SELL', 'BUY']
+        valid_actions = [None, 'SELL', 'BUY']
+        f_pos = self.position['qBid'] - self.position['qAsk']
+        if abs(f_pos) >= self.max_pos:
+            valid_actions = [None, 'BEST_OFFER', 'SELL']
+            valid_actions = [None, 'SELL']
+        elif abs(f_pos) >= self.max_pos:
+            valid_actions = [None,
+                             'BEST_BID',
+                             'BUY']
+            valid_actions = [None, 'BUY']
+
+        s_action = random.choice(valid_actions)
         # build a list of messages based on the action taken
         l_msg = self._translate_action(t_state, s_action)
         return l_msg
@@ -204,6 +217,11 @@ class BasicAgent(Agent):
                                                     my_ordmatch,
                                                     'ASK',
                                                     i_id)
+        # generate limit order or cancel everything
+        else:
+            return matching_engine.translate_to_agent(self,
+                                                      s_action,
+                                                      my_ordmatch)
         return []
 
     def _apply_policy(self, state, action, reward):
@@ -222,7 +240,7 @@ def run():
     """
     # Set up environment and agent
     e = Environment()  # create environment (also adds some dummy traffic)
-    a = e.create_agent(BasicAgent)  # create agent
+    a = e.create_agent(BasicAgent, f_min_time=1800.)  # create agent
     e.set_primary_agent(a)  # specify agent to track
 
     # Now simulate it
