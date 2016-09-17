@@ -14,6 +14,13 @@ This project requires **Python 2.7** and the following Python libraries installe
 - [Bintrees](https://pypi.python.org/pypi/bintrees/2.0.2)
 
 
+### Run
+In a terminal or command window, navigate to the top-level project directory `qtrader/` (that contains this README) and run one of the following commands:
+
+```python qtrader/agent.py```  
+```python -m qtrader.agent```
+
+
 ### Reference
 1. T.M. Mitchell.  *Machine  Learning*.   McGraw-Hill International Editions, 1997. [*link*](http://www.cs.cmu.edu/afs/cs.cmu.edu/user/mitchell/ftp/mlbook.html)
 2. M. Mohri, A. Rostamizadeh, A. Talwalkar. *Foundations of Machine Learning*. 2012. [*link*](https://mitpress.mit.edu/books/foundations-machine-learning)

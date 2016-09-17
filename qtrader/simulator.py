@@ -14,7 +14,7 @@ import importlib
 import logging
 
 # global variable
-DEBUG = False
+DEBUG = True
 
 '''
 Begin help functions
@@ -54,7 +54,7 @@ class Simulator(object):
         n_trials = min(n_trials, self.env.order_matching.max_nfiles)
         for trial in xrange(n_trials):
             self.quit = False
-            print 'Simulator.run(): Trial {}'.format(trial + 1)  # [debug]
+            # print 'Simulator.run(): Trial {}'.format(trial + 1)  # [debug]
             self.env.reset()
             self.current_time = 0.0
             self.last_updated = 0.0

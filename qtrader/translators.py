@@ -78,7 +78,7 @@ def translate_trades(idx, row, my_ordmatch, s_side=None, i_id=None):
                  'order_id': order_aux['order_id'],
                  'order_entry_step': idx,
                  'new_order_id': order_aux['order_id'],
-                 'order_price': row['Price'],
+                 'order_price': order_aux['order_price'],
                  'order_side': s_side,
                  'order_status': s_status,
                  'total_qty_order': order_aux['org_total_qty_order'],
@@ -100,7 +100,7 @@ def translate_trades(idx, row, my_ordmatch, s_side=None, i_id=None):
                  'order_id': my_book.i_last_order_id + 1,
                  'order_entry_step': idx,
                  'new_order_id': my_book.i_last_order_id + 1,
-                 'order_price': row['Price'],
+                 'order_price': order_aux['order_price'],
                  'order_side': s_side,
                  'order_status': 'Filled',
                  'total_qty_order': order_aux['org_total_qty_order'],
@@ -328,7 +328,7 @@ def translate_to_agent(agent, s_action, my_ordmatch):
         if my_order_bid:
             if s_action == 'BEST_ASK':
                 # and cancel them
-                d_rtn = my_order_bid.d_msg.copy()
+                d_rtn = my_order_bid.copy()
                 d_rtn['order_status'] = 'Canceled'
                 d_rtn['action'] = s_action
                 l_msg.append(d_rtn.copy())
@@ -337,7 +337,7 @@ def translate_to_agent(agent, s_action, my_ordmatch):
             # cancel the old order
             if my_order_ask['order_price'] != t_best_ask[0]:
                 # and cancel them
-                d_rtn = my_order_ask.d_msg.copy()
+                d_rtn = my_order_ask.copy()
                 d_rtn['order_status'] = 'Canceled'
                 d_rtn['action'] = s_action
                 l_msg.append(d_rtn.copy())

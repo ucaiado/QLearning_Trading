@@ -17,7 +17,7 @@ import pprint
 from translators import translate_trades, translate_row
 
 # global variable
-DEBUG = False
+DEBUG = True
 
 '''
 Begin help functions
@@ -133,7 +133,7 @@ class BloombergMatching(OrderMatching):
         '''
         Reset the order matching and all variables needed
         '''
-        # make sure that dont reset twoice
+        # make sure that dont reset twice
         if self.i_nrow != 0:
             self.i_nrow = 0
             self.idx += 1
@@ -236,14 +236,24 @@ class BloombergMatching(OrderMatching):
             else:
                 row = self.row
                 self.b_get_new_row = True
-                # [debug]
-                print 'corrected'
-                print self.my_book.get_n_top_prices(5)
-                print ''
+                # [debug] start PRINT BOOKS WHEN THE BID-ASK CROSSED
+                # print 'corrected'
+                # print self.my_book.get_n_top_prices(5)
+                # print ''
+                # [debug] end PRINT BOOKS WHEN THE BID-ASK CROSSED
             # check if the prices have crossed themselfs
+            b_test = True
+            # make sure that there are prices in the both sides
+            if int(self.row['']) <= 5:
+                b_test = False
+            if self.my_book.book_ask.price_tree.count == 0:
+                b_test = False
+            if self.my_book.book_bid.price_tree.count == 0:
+                b_test = False
             i_idrow = int(self.row[''])
-            if self.best_bid[0] != 0 and self.best_ask[0] != 0 and i_idrow > 5:
+            if self.best_bid[0] != 0 and self.best_ask[0] != 0 and b_test:
                 if self.best_bid[0] >= self.best_ask[0]:
+                    # set to not get a new row before correct that
                     self.b_get_new_row = False
                     row_aux = row.copy()
                     row_aux['Type'] = 'TRADE'
@@ -256,12 +266,13 @@ class BloombergMatching(OrderMatching):
                     row['Price'] = self.best_ask[0]
                     l_msg = self.reshape_row(self.i_nrow, row, 'ASK')
                     l_msg += l_msg_aux
-                    # [debug]
-                    print 'id: {}, date: {}'.format(self.row[''],
-                                                    self.row['Date'])
-                    # pprint.pprint(l_msg)
-                    print self.my_book.get_n_top_prices(5)
-                    print ''
+                    # [debug] start PRINT BOOKS WHEN THE BID-ASK CROSSED
+                    # print 'id: {}, date: {}'.format(self.row[''],
+                    #                                 self.row['Date'])
+                    # # pprint.pprint(l_msg)
+                    # print self.my_book.get_n_top_prices(5)
+                    # print ''
+                    # [debug] end PRINT BOOKS WHEN THE BID-ASK CROSSED
                 # check if should update the primary agent
                 if len(l_msg) == 0:  # just pass here if there is no trade
                     pass

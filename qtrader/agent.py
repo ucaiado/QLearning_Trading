@@ -20,7 +20,7 @@ import pandas as pd
 import pprint
 
 # Log finle enabled. global variable
-DEBUG = False
+DEBUG = True
 
 
 # setup logging messages
@@ -89,6 +89,7 @@ class BasicAgent(Agent):
         self.d_order_tree = {'BID': FastRBTree(), 'ASK': FastRBTree()}
         self.d_order_map = {}
         # Reset any variables here, if required
+        self.next_time = 0.
 
     def should_update(self):
         '''
@@ -108,10 +109,10 @@ class BasicAgent(Agent):
         if not msg_env:
             if not self.should_update():
                 return None
-        else:
-            print '============= begin env trade ==========='
-            print msg_env
-            print '============= end env trade ===========\n'
+        # else:
+        #     print '============= begin env trade ==========='
+        #     print msg_env
+        #     print '============= end env trade ===========\n'
         # recover basic infos
         inputs = self.env.sense(self)
         state = self.env.agent_states[self]
@@ -129,16 +130,17 @@ class BasicAgent(Agent):
         self.env.update_order_book(l_msg)
         s_action = None
         s_action2 = s_action
+        l_prices_to_print = []
         for msg in l_msg:
             if msg['agent_id'] == self.i_id:
                 s_action = msg['action']
                 s_action2 = s_action
                 s_indic = msg['agressor_indicator']
+                l_prices_to_print.append('{:0.2f}'.format(msg['order_price']))
                 if s_indic == 'Agressive' and s_action == 'SELL':
                     s_action2 = 'HIT'  # hit the bid
                 elif s_indic == 'Agressive' and s_action == 'BUY':
                     s_action2 = 'TAKE'  # take the offer
-                s_action2 = str((s_action2, msg['order_price']))
                 reward += self.env.act(self, msg)
 
         # Learn policy based on state, action, reward
@@ -150,17 +152,21 @@ class BasicAgent(Agent):
         # print agent inputs
         s_date = self.env.order_matching.row['Date']
         s_rtn = 'BasicAgent.update(): position = {}, inputs = {}, action'
-        s_rtn += ' = {}, reward = {}, time = {}\n'
+        s_rtn += ' = {}, price_action = {}, reward = {}, time = {}'
+        inputs['midPrice'] = '{:0.2f}'.format(inputs['midPrice'])
+        inputs['deltaMid'] = '{:0.3f}'.format(inputs['deltaMid'])
         if DEBUG:
             root.debug(s_rtn.format(state['Position'],
                                     inputs,
                                     s_action2,
+                                    l_prices_to_print,
                                     reward,
                                     s_date))
         else:
             print s_rtn.format(state['Position'],
                                inputs,
                                s_action2,
+                               l_prices_to_print,
                                reward,
                                s_date)
 
@@ -252,12 +258,12 @@ def run():
     """
     # Set up environment and agent
     e = Environment()  # create environment (also adds some dummy traffic)
-    a = e.create_agent(BasicAgent, f_min_time=1800.)  # create agent
+    a = e.create_agent(BasicAgent, f_min_time=3600.)  # create agent
     e.set_primary_agent(a)  # specify agent to track
 
     # Now simulate it
     sim = Simulator(e, update_delay=1.00, display=False)
-    sim.run(n_trials=1)  # run for a specified number of trials
+    sim.run(n_trials=2)  # run for a specified number of trials
 
     # save the Q table of the primary agent
     # save_q_table(e)

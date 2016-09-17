@@ -17,7 +17,7 @@ from matching_engine import BloombergMatching
 import logging
 
 # global variable
-DEBUG = False
+DEBUG = True
 
 '''
 Begin help functions
@@ -186,9 +186,11 @@ class Environment(object):
             self.update_agent_state(agent=agent_aux, msg=msg)
         # check if should update the primary
         if self.primary_agent:
-            if self.primary_agent.should_update():
-                self.update_agent_state(agent=self.primary_agent,
-                                        msg=None)
+            # ensure that the market is opened
+            if self.order_matching.last_date >= (10*60**2 + 10 * 60):
+                if self.primary_agent.should_update():
+                    self.update_agent_state(agent=self.primary_agent,
+                                            msg=None)
         # check if the market is closed
         if self.order_matching.last_date >= (16*60**2 + 50 * 60):
             self.done = True
@@ -196,8 +198,8 @@ class Environment(object):
             f_mid += self.order_matching.best_ask[0]
             f_mid /= 2.
             s_msg = 'Environment.step(): Market closed at 16:30:00!'
-            s_msg += 'Mid Price = {:0.2f}.'.format(f_mid)
-            s_msg += ' Trial aborted.'
+            s_msg += ' MidPrice = {:0.2f}.'.format(f_mid)
+            s_msg += ' Trial aborted.\n'
             if DEBUG:
                 logging.info(s_msg)
             else:
@@ -377,8 +379,9 @@ class Agent(object):
                 if s_status == 'Filled':
                     old_msg = self.d_order_map.pop(i_id)
                     self.d_order_tree[s_side].remove(old_msg['order_price'])
-                # else:
-                    # self.d_order_map[i_id] = msg
+                else:
+                    # if it was partially filled, should re-include the msg
+                    self.d_order_map[i_id] = msg
                     self.d_order_tree[s_side].insert(msg['order_price'], msg)
             # account the trades
             s_tside = self.trade_side[msg['agressor_indicator']]
