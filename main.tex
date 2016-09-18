@@ -15,14 +15,14 @@
 
 \usepackage{booktabs} % To thicken table lines
 
-\title{Trading Using Q-Learning}
+\title{Learning to Trade Using Q-Learning}
 \author{Uirá Caiado}
 
 \begin{document}
 \maketitle
 
 \begin{abstract}
-Your abstract.
+In this project, I will present an adaptive learning model to trade a single stock under the reinforcement learning framework. This area of machine learning consists in training an agent by reward and punishment without needing to specify the expected action. The agent learns from its experience and develops a strategy that maximizes its profits. The simulation results show initial success in bringing learning techniques to build algorithmic trading strategies.
 \end{abstract}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -30,15 +30,41 @@ Your abstract.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \section{Introduction}
+\label{sec:introduction}
 
-Your introduction goes here! Some examples of commonly used commands and features are listed below, to help you get started. If you have a question, please use the help menu (``?'') on the top bar to search for help or ask us a question. 
+In this section, I will provide a high-level overview of the project, define the problem addressed and the metric used to measure the performance of the model created.
+
+\subsection{Project Overview}
+Building an intelligent system that can trade many times a day and adapts itself to the market conditions and still consistently makes money is a subject of keen interest of any market participant.
+
+Given that it is hard to produce such strategy, in this project I will limit myself on finding an algorithm that learns by itself how to trade and do better than a random agent. To do so, I will feed my agent with one month of information about every trade and change in the top of the order book\footnote{Source: \url{https://en.wikipedia.org/wiki/Order_book_(trading}} in the PETR4\footnote{Source: \url{https://pt.wikipedia.org/wiki/Petrobras}} - one of the most liquidity assets in Brazilian Stock Market - in a Reinforcement Learning Framework. Later on, I will test what it has learned in a newest dataset. The dataset used in this project is also known as level I order book data\footnote{Source: \url{https://www.thebalance.com/order-book-level-2-market-data-and-depth-of-market-1031118}} and includes all trades and changes in the prices and total quantities at best Bid (those who wants to buy the stock) and Offer side (those who intends to sell the stock).
+
+\subsection{Problem Statement}
+The goal of this project is to build an adaptative learning model to trade a particular asset using reinforcement learning framework under an environment that replays historical high frequency data.
+
+\cite{Mohri_2012} explained that reinforcement learning is the study of planning and learning in a scenario where a learner (or agent) actively interacts with the environment to achieve a particular goal. The achievement of the agent's objective is typically measured by the reward he receives from the environment and which he seeks to maximize. Therefore, as \cite{chan2001electronic} described, the knowledge of the underlying process is not assumed but learned from experience.
+
+The agent can access some information about the environment state as the order flow imbalance, the number of ticks that the mid-price has changed, the sizes of the best bid and offer and so on. All inputs will be detailed in the next section.
+
+Each learning session will include data from the largest part of a trading session, starting at 10:30 and closing at 16:30. Also, the agent will be allowed to hold a position of just 400 shares at maximum (buy or sell). When the learning session is over, all positions from the learner will be closed out so the agent always will start a new session without carrying stocks.
+
+The learner should receive the inputs mentioned above at each time step $t$, and generate one of the following six possible actions: insert an order (or keep) just at the best bid price, just at the best ask price, on both sides or cancel all its orders. It also can buy (take the ask, in the market jargon), or sell (hit the bid).
+
+The agent also should receive a reward or a penalty at each time step if it is already carrying a position from previous rounds or if it has made a trade (the cost of the operations are computed as a penalty).
+
+Based on the rewards and penalties it gets, the agent should learn an optimal policy for trade this particular stock, maximizing the profit it receives from its actions and resulting positions.
+
+\subsection{Metrics}
+Bla
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% BLA
+%% ANALYSIS
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
-\section{Some examples to get started}
+\section{Analysis}
+
+bla
 
 \subsection{How to include Figures}
 
@@ -64,7 +90,7 @@ Comments can also be added to the margins of the compiled PDF using the todo com
 
 \subsection{How to add Tables}
 
-Use the table and tabular commands for basic tables --- see Table~\ref{tab:widgets}, for example. 
+Use the table and tabular commands for basic tables --- see Table~\ref{tab:widgets}, for example.
 
 \begin{table}
 \centering
