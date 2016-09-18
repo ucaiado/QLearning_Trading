@@ -1,7 +1,7 @@
 Trading Using Q-Learning
 ==================
 
-In this project, I will will use reinforcement learning framework to train an agent to trade a single stock. This is my capstone project for the [Machine Learning Engineer Nanodegree](https://www.udacity.com/course/machine-learning-engineer-nanodegree--nd009), from Udacity. You can check my report <a href="https://www.dropbox.com/s/tnwkztqmozys1h4/trading-q-learning.pdf?dl=0" target="_blank">here</a> and the notebook with the tests of the codes used in this project <a href="http://nbviewer.jupyter.org/github/ucaiado/QLearning_Trading/blob/66600448c8b957fd9cfaeb41a170b0365eef71d3/learning_trade.ipynb" target="_blank">here</a>. The TEX file was produced with help of [Overleaf](https://www.overleaf.com/read/mmzwqfbrkdvf).
+In this project, I will present an adaptive learning model to trade a single stock under the reinforcement learning framework. This area of machine learning consists in training an agent by reward and punishment without needing to specify the expected action. The agent learns from its experience and develops a strategy that maximizes its profits. This is my capstone project for the [Machine Learning Engineer Nanodegree](https://www.udacity.com/course/machine-learning-engineer-nanodegree--nd009), from Udacity. You can check my report <a href="https://www.dropbox.com/s/tnwkztqmozys1h4/trading-q-learning.pdf?dl=0" target="_blank">here</a> and the notebook with the tests of the codes used in this project <a href="https://nbviewer.jupyter.org/github/ucaiado/QLearning_Trading/blob/master/learning_trade.ipynb" target="_blank">here</a>. The TEX file was produced with help of [Overleaf](https://www.overleaf.com/read/mmzwqfbrkdvf).
 
 
 ### Install
