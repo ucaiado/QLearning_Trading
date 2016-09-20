@@ -26,6 +26,7 @@ In a terminal or command window, navigate to the top-level project directory `QL
 2. M. Mohri, A. Rostamizadeh, A. Talwalkar. *Foundations of Machine Learning*. 2012. [*link*](https://mitpress.mit.edu/books/foundations-machine-learning)
 3. N.T. Chan, C.R. Shelton.  *An Electronic Market-Maker*. 2001 [*link*](ftp://publications.ai.mit.edu/ai-publications/2001/AIM-2001-005.pdf)
 4. N.T. Chan.  *Artificial Markets and Intelligent Agents*. 2001 [*link*](http://cbcl.mit.edu/cbcl/publications/theses/thesis-chan.pdf)
+5. R. Cont, k. Arseniy, and S. Sasha. *The price impact of order book events*. Journal of financial econometrics 12.1, 2014 [*link*](https://pdfs.semanticscholar.org/d064/5eb3d744f9e962ff09b8a5e9156f2147e983.pdf)
 
 
 ### License
