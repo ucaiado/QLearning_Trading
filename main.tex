@@ -180,7 +180,11 @@ Lastly, according to \cite{Mitchell}, there are some conditions to ensure that t
 As the most inputs suggested in the last subsection was defined in an infinite space, in section 3 I will discretize those numbers before use them to train my agent, keeping the state space representation manageable, hopefully. We also will see how \cite{Mitchell} defined a reliable way to estimate training values for $Q$, given only a sequence of immediate rewards $r$.
 
 \subsection{Benchmark}
-bla
+As described before, the performance of my agent will be compared to the performance of a random agent. This random agent should select a random action from a set of valid action at each time step $t$.
+
+Just like my learner, the set of action can change because the random agent is limited to hold an open position of $400$ stocks at most, on any side. When it reaches its limit, it will be allowed just to perform actions that decrease its position. So, for instance, if it already [long](https://goo.gl/GgXJgR) in $400$ shares, the possible moves would be $\left (None,\, sell,\, best\_ask \right)$. If it is [short](https://goo.gl/XFR7q3), it just can perform $\left (None,\, buy,\, best\_bid\right)$.
+
+This performance will be measured primarily about the average reward received by the agents (that will be optimized by the learner). Later on, I will use the policy learned to simulate the learning agent behavior in a different dataset and then I will compare the final Profit and Loss and volatility of the returns of both agents. Thus, all data analyzed will be obtained by simulation.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% METHODOLOGY
