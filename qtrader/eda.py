@@ -59,11 +59,11 @@ def test_ofi_indicator(s_fname, f_min_time=10.):
     :param f_min_time: float. Number of seconds to aggreagate the information
     '''
     fw_out = open('data/ofi_petr.txt', 'w')  # data output
-    fw_out.write('TIME\tOFI\tDELTA_MID\tLOG_RET\n')
+    fw_out.write('TIME\tOFI\tDELTA_MID\tLOG_RET\tqBID\tBOOK_RATIO\n')
     archive = zipfile.ZipFile(s_fname, 'r')
     d_best_price = {'BID': (0., 0.), 'ASK': (0., 0.)}
 
-    # read only one file inside the ZIP file
+    # read only the first file inside the ZIP file
     l_fnames = archive.filelist
     x = l_fnames[0]
     f_ofi = 0.
@@ -90,8 +90,14 @@ def test_ofi_indicator(s_fname, f_min_time=10.):
                     f_change = int((f_curent_mid - f_mid)/0.01)
                     f_logrtn = np.log((f_curent_mid/f_mid))
                 f_mid = (d_best_price['ASK'][0] + d_best_price['BID'][0])/2.
-                s_txt = '{}\t{}\t{}\t{}\n'
-                s_out = s_txt.format(s_time, f_ofi, f_change, f_logrtn)
+                s_txt = '{}\t{}\t{}\t{}\t{}\t{}\n'
+                f_ratio = d_best_price['BID'][1] * 1. / d_best_price['ASK'][1]
+                s_out = s_txt.format(s_time,
+                                     f_ofi,
+                                     f_change,
+                                     f_logrtn,
+                                     d_best_price['BID'][1],
+                                     f_ratio)
                 fw_out.write(s_out)
                 # reselt counter
                 f_ofi = 0
