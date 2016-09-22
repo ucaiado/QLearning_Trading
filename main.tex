@@ -9,6 +9,7 @@
 \usepackage{listings}
 \usepackage[numbers]{natbib}
 \usepackage{babel,blindtext}
+\usepackage{bbm}
 
 \usepackage{algorithm}
 \usepackage[noend]{algpseudocode}
@@ -133,9 +134,9 @@ $$OFI_k = \sum^{N(t_k)}_{n=N(t_{k-1})+1} e_n$$
 
 Where $N(t_k)$ and $N(t_{k-1}) + 1$ are index of the first and last event in the interval. The $e_n$ was defined by the authors as a measure of the contribution of the $n$-th event to the size of the bid and ask queues:
 
-$$e_n = \mathbb{1}_{P_{n}^{B} \geq P_{n-1}^{B}} q^{B}_{n} - \mathbb{1}_{P_{n}^{B} \leq P_{n-1}^{B}}  q^{B}_{n-1} - \mathbb{1}_{P_{n}^{A} \leq P_{n-1}^{A}} q^{A}_{n} + \mathbb{1}_{P_{n}^{A} \geq P_{n-1}^{A}}  q^{A}_{n-1}$$
+$$e_n = \mathbbm{1}_{P_{n}^{B} \geq P_{n-1}^{B}} q^{B}_{n} - \mathbbm{1}_{P_{n}^{B} \leq P_{n-1}^{B}}  q^{B}_{n-1} - \mathbbm{1}_{P_{n}^{A} \leq P_{n-1}^{A}} q^{A}_{n} + \mathbbm{1}_{P_{n}^{A} \geq P_{n-1}^{A}}  q^{A}_{n-1}$$
 
-Where $q^{B}_{n}$ and $q^{A}_{n}$ are linked to the cumulated quantities at the best bid and ask in the time $n$. The subscript $n-1$ is related to the last observation. $\mathbb{1}$ is an indicator\footnote{Source: \url{https://en.wikipedia.org/wiki/Indicator_function}} function. In the figure below is ploted the 10-second log-return of PETR4 against the contemporaneous OFI.
+Where $q^{B}_{n}$ and $q^{A}_{n}$ are linked to the accumulated quantities at the best bid and ask in the time $n$. The subscript $n-1$ is related to the last observation. $\mathbbm{1}$ is an indicator\footnote{Source: \url{https://en.wikipedia.org/wiki/Indicator_function}} function. In the figure below is ploted the 10-second log-return of PETR4 against the contemporaneous OFI.
 
 \begin{figure}[ht!]
 \centering
