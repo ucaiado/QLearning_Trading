@@ -121,9 +121,12 @@ The current state of the environment will be represented by a set of variables r
 \begin{itemize}
 \item $log\_return$ : float. The Log return of the stock in the last 10 seconds
 \item $qOFI$ : integer. The net order flow in the last 10 seconds
+\item $nSeconds$: integer. Seconds elapsed since the last measurements
 \item $qBid$ : Integer. The size of the current best Bid
 \item $book\_ratio$ : float. The Bid size over the Ask size
 \item $position$: integer. The current position of my agent
+\item $OrderBid$: boolean. If the agent has order at the bid side
+\item $OrderAsk$: boolean. If the agent has order at the ask side
 \end{itemize}
 
 The size of the Ask is not used because it is indirectly used in the $book\_ratio$. The $log\_return$ is defined as $r_t = \log \left(  \frac{P_t}{P_{t-1}}\right)$, where $P_t$ is the current price and $P_{t-1}$ is the previous price. Concerning the measure of the Order Flow Imbalance (OFI), there are many ways to measure it. \cite{cont2014price} argued the *order flow imbalance* is a measure of supply/demand imbalance and defines it as a sum of individual event contribution $e_n$ over time intervals $\left[ t_{k-1}, \; t_k \right]$, such that:
