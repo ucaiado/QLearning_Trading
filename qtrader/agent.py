@@ -20,7 +20,7 @@ import pandas as pd
 import pprint
 
 # Log finle enabled. global variable
-DEBUG = True
+DEBUG = False
 
 
 # setup logging messages
@@ -131,8 +131,8 @@ class BasicAgent(Agent):
         s_action = None
         s_action2 = s_action
         l_prices_to_print = []
-        # if len(l_msg) == 0:
-        #     reward += self.env.act(self, msg)
+        if len(l_msg) == 0:
+            reward += self.env.act(self, None)
         for msg in l_msg:
             if msg['agent_id'] == self.i_id:
                 s_action = msg['action']
@@ -156,7 +156,9 @@ class BasicAgent(Agent):
         s_rtn = 'BasicAgent.update(): position = {}, inputs = {}, action'
         s_rtn += ' = {}, price_action = {}, reward = {}, time = {}'
         inputs['midPrice'] = '{:0.2f}'.format(inputs['midPrice'])
-        inputs['deltaMid'] = '{:0.3f}'.format(inputs['deltaMid'])
+        # inputs['deltaMid'] = '{:0.3f}'.format(inputs['deltaMid'])
+        inputs.pop('deltaMid')
+        # TODO: include the cluster of the inter representation in input
         if DEBUG:
             root.debug(s_rtn.format(state['Position'],
                                     inputs,
@@ -195,13 +197,11 @@ class BasicAgent(Agent):
                          'SELL', 'BUY']
         # valid_actions = [None, 'SELL', 'BUY']
         f_pos = self.position['qBid'] - self.position['qAsk']
-        if abs(f_pos) >= self.max_pos:
+        if f_pos <= (self.max_pos * -1):
             valid_actions = [None, 'BEST_OFFER', 'SELL']
             # valid_actions = [None, 'SELL']
-        elif abs(f_pos) >= self.max_pos:
-            valid_actions = [None,
-                             'BEST_BID',
-                             'BUY']
+        elif f_pos >= self.max_pos:
+            valid_actions = [None, 'BEST_BID', 'BUY']
             # valid_actions = [None, 'BUY']
         # NOTE: I should change just this row when implementing
         # the learning agent
@@ -341,7 +341,7 @@ def run():
     """
     # Set up environment and agent
     e = Environment(i_idx=1)  # create environment
-    a = e.create_agent(BasicAgent, f_min_time=1800.)  # create agent
+    a = e.create_agent(BasicAgent, f_min_time=1.)  # create agent
     e.set_primary_agent(a)  # specify agent to track
 
     # Now simulate it
@@ -349,7 +349,7 @@ def run():
     sim.run(n_trials=2)  # run for a specified number of trials
 
     # save the Q table of the primary agent
-    # save_q_table(e)
+    save_q_table(e)
 
 
 if __name__ == '__main__':

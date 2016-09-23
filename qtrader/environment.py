@@ -17,7 +17,7 @@ from matching_engine import BloombergMatching
 import logging
 
 # global variable
-DEBUG = True
+DEBUG = False
 
 '''
 Begin help functions
@@ -268,8 +268,8 @@ class Environment(object):
             state[s_key] = position[s_key]
         state['Position'] = state['qBid'] - state['qAsk']
         # check if it has orders in the best bid and offer
-        # tree_bid = agent.d_order_tree['BID']
-        # tree_ask = agent.d_order_tree['ASK']
+        tree_bid = agent.d_order_tree['BID']
+        tree_ask = agent.d_order_tree['ASK']
         # Check if the agent has orders at the best prices
         state['best_bid'] = False
         state['best_offer'] = False

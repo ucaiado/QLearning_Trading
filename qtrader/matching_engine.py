@@ -17,7 +17,7 @@ import pprint
 from translators import translate_trades, translate_row
 
 # global variable
-DEBUG = True
+DEBUG = False
 
 '''
 Begin help functions

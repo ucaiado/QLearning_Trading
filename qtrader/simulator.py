@@ -14,7 +14,7 @@ import importlib
 import logging
 
 # global variable
-DEBUG = True
+DEBUG = False
 
 '''
 Begin help functions
