@@ -11,7 +11,9 @@ Created on 09/18/2016
 from collections import defaultdict
 import csv
 import numpy as np
+import matplotlib.pyplot as plt
 import pandas as pd
+import seaborn as sns
 import zipfile
 
 
@@ -115,3 +117,89 @@ def test_ofi_indicator(s_fname, f_min_time=10.):
             d_best_price[row['Type']] = (row['Price'], row['Size'])
             row['Date'] = row['Date'][-8:]
             f_ofi += f_e_n
+
+
+def cluster_results(reduced_data, preds, centers):
+    '''
+    Visualizes the PCA-reduced cluster data in two dimensions
+    Adds cues for cluster centers and student-selected sample data
+    :param reduced_data: pandas dataframe. the dataset transformed and cleaned
+    :param preds: numpy array. teh cluster classification of each datapoint
+    :param centers: numpy array. the center of the clusters
+    :param pca_samples: numpy array. the sample choosen
+    '''
+
+    predictions = pd.DataFrame(preds, columns=['Cluster'])
+    plot_data = pd.concat([predictions, reduced_data], axis=1)
+
+    # Generate the cluster plot
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    # Color map
+    cmap = sns.color_palette('cubehelix', 12)
+
+    # Color the points based on assigned cluster
+    for i, cluster in plot_data.groupby('Cluster'):
+        cluster.plot(ax=ax, kind='scatter', x='Dimension 1', y='Dimension 2',
+                     color=cmap[i],
+                     label='Cluster %i' % (i),
+                     s=30)
+
+    # Plot centers with indicators
+    for i, c in enumerate(centers):
+        ax.scatter(x=c[0], y=c[1], color='white', edgecolors='black',
+                   alpha=1, linewidth=2, marker='o', s=200)
+        ax.scatter(x=c[0], y=c[1], marker='$%d$' % (i), alpha=1, s=100)
+
+    # Set plot title
+    s_title = 'Cluster Learning on PCA-Reduced Data - Centroids Marked by'
+    s_title += ' Number\n'
+    ax.set_title(s_title, fontsize=16)
+
+
+def pca_results(good_data, pca):
+    '''
+    Create a DataFrame of the PCA results. Includes dimension feature weights
+    and explained variance Visualizes the PCA results
+    :param good_data: DataFrame. all dataset log transformed with 6 columns
+    :param pca: Sklearn Object. a PCA decomposition object already fitted
+    '''
+    # Dimension indexing
+    dimensions = dimensions = ['Dimension {}'.format(i)
+                               for i in range(1, len(pca.components_)+1)]
+
+    # PCA components
+    components = pd.DataFrame(np.round(pca.components_, 4),
+                              columns=good_data.keys())
+    components.index = dimensions
+
+    # PCA explained variance
+    ratios = pca.explained_variance_ratio_.reshape(len(pca.components_), 1)
+    variance_ratios = pd.DataFrame(np.round(ratios, 4),
+                                   columns=['Explained Variance'])
+    variance_ratios.index = dimensions
+
+    # reshape the data to be plotted
+    df_aux = components.unstack().reset_index()
+    df_aux.columns = ['Feature', 'Dimension', 'Variance']
+
+    # Create a bar plot visualization
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    # Plot the feature weights as a function of the components
+    sns.barplot(x='Dimension', y='Variance', hue='Feature', data=df_aux, ax=ax)
+    ax.set_ylabel('Feature Weights')
+    ax.set_xlabel('')
+    ax.set_xticklabels(dimensions, rotation=0)
+
+    # Display the explained variance ratios
+    for i, ev in enumerate(pca.explained_variance_ratio_):
+        ax.text(i-0.40, ax.get_ylim()[1] + 0.05,
+                'Explained Variance\n          %.4f' % (ev))
+
+    # insert a title
+    # ax.set_title('PCA Explained Variance Ratio',
+    #              fontsize=16, y=1.10)
+
+    # Return a concatenated DataFrame
+    return pd.concat([variance_ratios, components], axis=1)
