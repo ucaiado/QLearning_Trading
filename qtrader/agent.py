@@ -78,7 +78,7 @@ class BasicAgent(Agent):
         # Initialize any additional variables here
         self.f_min_time = f_min_time
         self.next_time = 0.
-        self.max_pos = 400.
+        self.max_pos = 100.
 
     def reset(self):
         '''
@@ -125,12 +125,14 @@ class BasicAgent(Agent):
 
         # # Execute action and get reward
         # print '\ncurrent action: {}\n'.format(action)
-        reward = 0
+        reward = 0.
         # pprint.pprint(l_msg)
         self.env.update_order_book(l_msg)
         s_action = None
         s_action2 = s_action
         l_prices_to_print = []
+        # if len(l_msg) == 0:
+        #     reward += self.env.act(self, msg)
         for msg in l_msg:
             if msg['agent_id'] == self.i_id:
                 s_action = msg['action']
@@ -201,11 +203,21 @@ class BasicAgent(Agent):
                              'BEST_BID',
                              'BUY']
             # valid_actions = [None, 'BUY']
-        # I should shage just this row when implementing the learning agent
-        s_action = random.choice(valid_actions)
+        # NOTE: I should change just this row when implementing
+        # the learning agent
+        s_action = self._choose_an_action(t_state, valid_actions)
         # build a list of messages based on the action taken
         l_msg = self._translate_action(t_state, s_action)
         return l_msg
+
+    def _choose_an_action(self, t_state, valid_actions):
+        '''
+        Return an action from a list of allowed actions according to the
+        agent policy
+        :param valid_actions: list. List of the allowed actions
+        :param t_state: tuple. The inputs to be considered by the agent
+        '''
+        return random.choice(valid_actions)
 
     def _translate_action(self, t_state, s_action):
         '''
@@ -252,13 +264,84 @@ class BasicAgent(Agent):
         pass
 
 
+class BasicLearningAgent(BasicAgent):
+    '''
+    A representation of an agent that learns using a basic implementation of
+    Q-learning that is suited for deterministic Markov decision processes
+    '''
+    def __init__(self, env, i_id, f_min_time=3600., f_gamma=0.5):
+        '''
+        Initialize a BasicLearningAgent. Save all parameters as attributes
+        :param env: Environment object. The grid-like world
+        :*param f_gamma: float. weight of delayed versus immediate rewards
+        '''
+        # sets self.env = env, state = None, next_waypoint = None
+        super(BasicLearningAgent, self).__init__(env, i_id)
+        # Initialize any additional variables here
+        self.max_pos = 100.
+        self.q_table = defaultdict(lambda: defaultdict(float))
+        self.f_gamma = f_gamma
+        self.old_state = None
+        self.last_action = None
+        self.last_reward = None
+
+    def _choose_an_action(self, t_state, valid_actions):
+        '''
+        Return an action from a list of allowed actions according to the
+        agent policy
+        :param valid_actions: list. List of the allowed actions
+        :param t_state: tuple. The inputs to be considered by the agent
+        '''
+        # set a random action in case of exploring world
+        max_val = 0
+        best_Action = random.choice(valid_actions)
+        # arg max Q-value choosing a action better than zero
+        for action, val in self.q_table[str(t_state)].iteritems():
+            if val > max_val:
+                max_val = val
+                best_Action = action
+        return best_Action
+
+    def _apply_policy(self, state, action, reward):
+        '''
+        Learn policy based on state, action, reward
+        :param state: dictionary. The current state of the agent
+        :param action: string. the action selected at this time
+        :param reward: integer. the rewards received due to the action
+        '''
+        # check if there is some state in cache
+        if self.old_state:
+            # apply: Q <- r + y max_a' Q(s', a')
+            # note that s' is the result of apply a in s. a' is the action that
+            # would maximize the Q-value for the state s'
+            s_state = str(state)
+            max_Q = 0.
+            l_aux = self.q_table[s_state].values()
+            if len(l_aux) > 0:
+                max_Q = max(l_aux)
+            gamma_f_max_Q_a_prime = self.f_gamma * max_Q
+            f_new = self.last_reward + gamma_f_max_Q_a_prime
+            self.q_table[str(self.old_state)][self.last_action] = f_new
+        # save current state, action and reward to use in the next run
+        # apply s <- s'
+        self.old_state = state
+        self.last_action = action
+        self.last_reward = reward
+        # make sure that the current state has at least the current reward
+        # notice that old_state and last_action is related to the current (s,a)
+        # at this point, and not to (s', a'), as previously used
+        if not self.q_table[str(self.old_state)][self.last_action]:
+            s_aux = str(self.old_state)
+            self.q_table[s_aux][self.last_action] = self.last_reward
+
+
 def run():
     """
     Run the agent for a finite number of trials.
     """
     # Set up environment and agent
-    e = Environment()  # create environment (also adds some dummy traffic)
-    a = e.create_agent(BasicAgent, f_min_time=3600.)  # create agent
+    e = Environment(i_idx=1)  # create environment
+    a = e.create_agent(BasicAgent, f_min_time=1800.)  # create agent
     e.set_primary_agent(a)  # specify agent to track
 
     # Now simulate it

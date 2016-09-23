@@ -86,7 +86,9 @@ class BloombergMatching(OrderMatching):
         Initialize a OrderMatching object. Save all parameters as attributes
         :param env: Environment object. The Market
         :param s_instrument: string. name of the instrument of book
-        :param env: Environment object. The Market
+        :param i_num_agents: integer. Number of agents
+        :param s_fname: string. Name of the zip file where all files are stored
+        :param i_idx: integer. The index of the start file to be read
         '''
         super(BloombergMatching, self).__init__(env)
         self.s_instrument = s_instrument

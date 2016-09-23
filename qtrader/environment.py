@@ -48,9 +48,10 @@ class Environment(object):
                      'SELL',
                      'BUY']
 
-    def __init__(self):
+    def __init__(self, i_idx=None):
         '''
-        Initialize an Environment object.
+        Initialize an Environment object
+        :param i_idx: integer. The index of the start file to be read
         '''
         self.s_instrument = 'PETR4'
         self.done = False
@@ -74,7 +75,8 @@ class Environment(object):
         self.order_matching = BloombergMatching(env=self,
                                                 s_instrument=s_aux,
                                                 i_num_agents=i_naux,
-                                                s_fname=s_fname)
+                                                s_fname=s_fname,
+                                                i_idx=i_idx)
 
         # define the best bid and offer attributes
         self._best_bid = self.order_matching.best_bid
@@ -255,10 +257,10 @@ class Environment(object):
         :param action: dictionary. The current action of the agent
         '''
         assert agent in self.agent_states, 'Unknown agent!'
-        assert action['action'] in self.valid_actions, 'Invalid action!'
-
-        # Update the position using action
-        agent.act(action)
+        if action:
+            assert action['action'] in self.valid_actions, 'Invalid action!'
+            # Update the position using action
+            agent.act(action)
         position = agent.position
         # update current position in the agent state
         state = self.agent_states[agent]
@@ -266,16 +268,20 @@ class Environment(object):
             state[s_key] = position[s_key]
         state['Position'] = state['qBid'] - state['qAsk']
         # check if it has orders in the best bid and offer
-        tree_bid = agent.d_order_tree['BID']
-        tree_ask = agent.d_order_tree['ASK']
+        # tree_bid = agent.d_order_tree['BID']
+        # tree_ask = agent.d_order_tree['ASK']
         # Check if the agent has orders at the best prices
+        state['best_bid'] = False
+        state['best_offer'] = False
         if tree_bid.count != 0 and tree_ask.count != 0:
-            f_best_bid = tree_bid.max_key()
-            f_best_ask = tree_ask.min_key()
-            f_ask = agent.env.order_matching.best_ask[0]
-            f_bid = agent.env.order_matching.best_bid[0]
-            state['best_bid'] = f_best_bid >= f_bid
-            state['best_offer'] = f_best_bid <= f_ask
+            # f_best_bid = tree_bid.max_key()
+            # f_best_ask = tree_ask.min_key()
+            # f_ask = agent.env.order_matching.best_ask[0]
+            # f_bid = agent.env.order_matching.best_bid[0]
+            # state['best_bid'] = f_best_bid >= f_bid
+            # state['best_offer'] = f_best_bid <= f_ask
+            state['best_bid'] = True
+            state['best_offer'] = True
 
         # calculate the current PnL
         sense = self.sense(agent)
