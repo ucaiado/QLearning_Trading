@@ -11,6 +11,8 @@ Created on 09/01/2016
 import zipfile
 import csv
 import numpy as np
+import pandas as pd
+import pickle
 import time
 
 
@@ -158,3 +160,40 @@ def make_zip_file(s_fname):
     #     break  # remove it
 
     print "run in {:0.2f} seconds".format(time.time() - f_start)
+
+
+class ClusterScaler(object):
+    '''
+    Handler of all the process to scale the input space from the learner
+    '''
+    def __init__(self):
+        '''
+        Initialize a Scaler object
+        '''
+        self.kmeans = pickle.load(open('data/kmeans.dat', 'r'))
+        self.pca = pickle.load(open('data/pca.dat', 'r'))
+        self.d_scale = {}
+        self.d_scale['OFI'] = pickle.load(open('data/scale_ofi.dat', 'r'))
+        self.d_scale['qBID'] = pickle.load(open('data/scale_ofi.dat', 'r'))
+        scale_aux = pickle.load(open('data/scale_bookratio.dat', 'r'))
+        self.d_scale['BOOK_RATIO'] = scale_aux
+        self.d_scale['LOG_RET'] = pickle.load(open('data/logret.dat', 'r'))
+
+    def transform(self, d_feat):
+        '''
+        Return the cluster of the input data
+        :param d_feat: dictionary. Original Input data from one instamce
+        '''
+        # scale the features passed
+        d_data = {}
+        d_data['OFI'] = d_feat['OFI'].reshape(-1, 1)
+        d_data['qBID'] = np.log(d_feat['qBID']).reshape(-1, 1)
+        d_data['BOOK_RATIO'] = np.log(d_feat['BOOK_RATIO'].reshape(-1, 1))
+        d_data['LOG_RET'] = d_feat['LOG_RET'].reshape(-1, 1)
+        for s_key in ['OFI', 'qBID', 'BOOK_RATIO', 'LOG_RET']:
+            d_data[s_key] = float(self.d_scale[s_key].transform(d_data[s_key]))
+        # aplpy PCA to reduce to two dimensions
+        na_val_pca = pd.Series(d_data).values.reshape(1, -1)
+        na_val_pca = self.pca.transform(na_val_pca)
+        # return the cluster (from 10) using kmeans
+        return int(self.kmeans.predict(na_val_pca))

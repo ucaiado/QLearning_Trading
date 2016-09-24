@@ -18,6 +18,7 @@ from bintrees import FastRBTree
 from collections import defaultdict
 import pandas as pd
 import pprint
+import preprocess
 
 # Log finle enabled. global variable
 DEBUG = False
@@ -79,6 +80,7 @@ class BasicAgent(Agent):
         self.f_min_time = f_min_time
         self.next_time = 0.
         self.max_pos = 100.
+        self.scaler = preprocess.ClusterScaler()
 
     def reset(self):
         '''
@@ -174,13 +176,25 @@ class BasicAgent(Agent):
                                reward,
                                s_date)
 
-    def _get_intern_state(self, inputs, position):
+    def _get_intern_state(self, inputs, state):
         '''
         Return a tuple representing the intern state of the agent
         :param inputs: dictionary. traffic light and presence of cars
-        :param position: dictionary. the current position of the agent
+        :param state: dictionary. the current position of the agent
         '''
-        pass
+        d_data = {}
+        d_data['OFI'] = inputs['qOfi']
+        d_data['qBID'] = inputs['qBid']
+        d_data['BOOK_RATIO'] = inputs['qBid'][1] * 1. / inputs['qAsk'][1]
+        # TODO: implement that. I dont have logret in the input currently
+        d_data['LOG_RET'] = 0.
+
+        i_cluster = self.scaler(d_data)
+        t_rtn = (i_cluster,
+                 state['Position'],
+                 state['best_bid'],
+                 state['best_ask'])
+        return t_rtn
 
     def _take_action(self, t_state, msg_env):
         '''
