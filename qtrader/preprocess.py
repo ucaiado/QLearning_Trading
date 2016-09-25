@@ -185,13 +185,15 @@ class ClusterScaler(object):
         :param d_feat: dictionary. Original Input data from one instamce
         '''
         # scale the features passed
+        # print d_feat  # [DEBUG]
         d_data = {}
-        d_data['OFI'] = d_feat['OFI'].reshape(-1, 1)
-        d_data['qBID'] = np.log(d_feat['qBID']).reshape(-1, 1)
-        d_data['BOOK_RATIO'] = np.log(d_feat['BOOK_RATIO'].reshape(-1, 1))
-        d_data['LOG_RET'] = d_feat['LOG_RET'].reshape(-1, 1)
+        d_data['OFI'] = d_feat['OFI']
+        d_data['qBID'] = np.log(d_feat['qBID'])
+        d_data['BOOK_RATIO'] = np.log(d_feat['BOOK_RATIO'])
+        d_data['LOG_RET'] = d_feat['LOG_RET']
         for s_key in ['OFI', 'qBID', 'BOOK_RATIO', 'LOG_RET']:
-            d_data[s_key] = float(self.d_scale[s_key].transform(d_data[s_key]))
+            f_value = np.array([1. * d_data[s_key]]).reshape(1, -1)
+            d_data[s_key] = float(self.d_scale[s_key].transform(f_value))
         # aplpy PCA to reduce to two dimensions
         na_val_pca = pd.Series(d_data).values.reshape(1, -1)
         na_val_pca = self.pca.transform(na_val_pca)

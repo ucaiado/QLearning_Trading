@@ -236,6 +236,7 @@ class Environment(object):
         f_mid += self.order_matching.best_bid[0]
         f_mid /= 2.
         f_mid_change = f_mid - self.order_matching.mid_price_10s
+        f_log_ret = np.log(f_mid/self.order_matching.mid_price_10s)
 
         d_rtn = {'qOfi': i_ofi,
                  'qAggr': i_aggr_qty,
@@ -244,7 +245,8 @@ class Environment(object):
                  'qBid': self.order_matching.best_bid[1],
                  'qAsk': self.order_matching.best_ask[1],
                  'midPrice': np.around(f_mid, 2),
-                 'deltaMid': f_mid_change}
+                 'deltaMid': f_mid_change,
+                 'logret': f_log_ret}
 
         return d_rtn
 

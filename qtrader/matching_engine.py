@@ -113,6 +113,7 @@ class BloombergMatching(OrderMatching):
         self.i_qty_traded_at_ask = 0
         self.mid_price_10s = 0.
         self.b_get_new_row = True
+        self.f_last_bucket = 0.
         if i_idx:
             self.idx = i_idx
 
@@ -151,6 +152,7 @@ class BloombergMatching(OrderMatching):
             self.obj_best_bid = None
             self.obj_best_ask = None
             self.mid_price_10s = 0.
+            self.f_last_bucket = 0.
 
     def update(self, l_msg, b_print=False):
         '''
@@ -204,7 +206,8 @@ class BloombergMatching(OrderMatching):
             self.best_bid = best_bid
             self.best_ask = best_ask
         # hold some variables from the start of 10s fold
-        if self.last_date % 10 == 0:
+        if self.last_date % 10 == 0 and self.f_last_bucket != self.last_date:
+            self.f_last_bucket = self.last_date
             self.i_ofi_10s = self.i_ofi
             self.i_ofi_10s += 1 - 1
             self.i_qty_traded_at_bid_10s = self.i_qty_traded_at_bid

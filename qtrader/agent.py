@@ -185,15 +185,15 @@ class BasicAgent(Agent):
         d_data = {}
         d_data['OFI'] = inputs['qOfi']
         d_data['qBID'] = inputs['qBid']
-        d_data['BOOK_RATIO'] = inputs['qBid'][1] * 1. / inputs['qAsk'][1]
+        d_data['BOOK_RATIO'] = inputs['qBid'] * 1. / inputs['qAsk']
         # TODO: implement that. I dont have logret in the input currently
-        d_data['LOG_RET'] = 0.
+        d_data['LOG_RET'] = inputs['logret']
 
-        i_cluster = self.scaler(d_data)
+        i_cluster = self.scaler.transform(d_data)
         t_rtn = (i_cluster,
                  state['Position'],
                  state['best_bid'],
-                 state['best_ask'])
+                 state['best_offer'])
         return t_rtn
 
     def _take_action(self, t_state, msg_env):
