@@ -17,7 +17,7 @@ from matching_engine import BloombergMatching
 import logging
 
 # global variable
-DEBUG = False
+DEBUG = True
 
 '''
 Begin help functions
@@ -194,7 +194,7 @@ class Environment(object):
                     self.update_agent_state(agent=self.primary_agent,
                                             msg=None)
         # check if the market is closed
-        if self.order_matching.last_date >= (16*60**2 + 50 * 60):
+        if self.order_matching.last_date >= (16*60**2 + 30 * 60):
             self.done = True
             f_mid = self.order_matching.best_ask[0]
             f_mid += self.order_matching.best_ask[0]
@@ -236,7 +236,9 @@ class Environment(object):
         f_mid += self.order_matching.best_bid[0]
         f_mid /= 2.
         f_mid_change = f_mid - self.order_matching.mid_price_10s
-        f_log_ret = np.log(f_mid/self.order_matching.mid_price_10s)
+        f_log_ret = 0.
+        if self.order_matching.mid_price_10s != 0.:
+            f_log_ret = np.log(f_mid/self.order_matching.mid_price_10s)
 
         d_rtn = {'qOfi': i_ofi,
                  'qAggr': i_aggr_qty,

@@ -21,7 +21,7 @@ import pprint
 import preprocess
 
 # Log finle enabled. global variable
-DEBUG = False
+DEBUG = True
 
 
 # setup logging messages
@@ -81,6 +81,7 @@ class BasicAgent(Agent):
         self.next_time = 0.
         self.max_pos = 100.
         self.scaler = preprocess.ClusterScaler()
+        self.s_agent_name = 'BasicAgent'
 
     def reset(self):
         '''
@@ -155,30 +156,33 @@ class BasicAgent(Agent):
 
         # print agent inputs
         s_date = self.env.order_matching.row['Date']
-        s_rtn = 'BasicAgent.update(): position = {}, inputs = {}, action'
-        s_rtn += ' = {}, price_action = {}, reward = {}, time = {}'
+        s_rtn = '{}.update(): time = {}, position = {}, inputs = {}, action'
+        s_rtn += ' = {}, price_action = {}, reward = {}'
         inputs['midPrice'] = '{:0.2f}'.format(inputs['midPrice'])
         # inputs['deltaMid'] = '{:0.3f}'.format(inputs['deltaMid'])
         inputs.pop('deltaMid')
+        inputs['cluster'] = self.state['cluster']
         # TODO: include the cluster of the inter representation in input
         if DEBUG:
-            root.debug(s_rtn.format(state['Position'],
+            root.debug(s_rtn.format(self.s_agent_name,
+                                    s_date,
+                                    state['Position'],
                                     inputs,
                                     s_action2,
                                     l_prices_to_print,
-                                    reward,
-                                    s_date))
+                                    reward))
         else:
-            print s_rtn.format(state['Position'],
+            print s_rtn.format(self.s_agent_name,
+                               s_date,
+                               state['Position'],
                                inputs,
                                s_action2,
                                l_prices_to_print,
-                               reward,
-                               s_date)
+                               reward)
 
     def _get_intern_state(self, inputs, state):
         '''
-        Return a tuple representing the intern state of the agent
+        Return a dcitionary representing the intern state of the agent
         :param inputs: dictionary. traffic light and presence of cars
         :param state: dictionary. the current position of the agent
         '''
@@ -186,15 +190,22 @@ class BasicAgent(Agent):
         d_data['OFI'] = inputs['qOfi']
         d_data['qBID'] = inputs['qBid']
         d_data['BOOK_RATIO'] = inputs['qBid'] * 1. / inputs['qAsk']
-        # TODO: implement that. I dont have logret in the input currently
         d_data['LOG_RET'] = inputs['logret']
 
         i_cluster = self.scaler.transform(d_data)
-        t_rtn = (i_cluster,
-                 state['Position'],
-                 state['best_bid'],
-                 state['best_offer'])
-        return t_rtn
+        d_rtn = {}
+        d_rtn['cluster'] = i_cluster
+        d_rtn['Position'] = state['Position']
+        d_rtn['best_bid'] = state['best_bid']
+        d_rtn['best_offer'] = state['best_offer']
+
+        return d_rtn
+
+        # t_rtn = (i_cluster,
+        #          state['Position'],
+        #          state['best_bid'],
+        #          state['best_offer'])
+        # return t_rtn
 
     def _take_action(self, t_state, msg_env):
         '''
@@ -209,15 +220,21 @@ class BasicAgent(Agent):
         # select a randon action, but not trade more than the maximum position
         valid_actions = [None, 'BEST_BID', 'BEST_OFFER', 'BEST_BOTH',
                          'SELL', 'BUY']
+        # valid_actions = [None, 'BEST_BID', 'BEST_OFFER', 'BEST_BOTH']
         # valid_actions = [None, 'SELL', 'BUY']
         f_pos = self.position['qBid'] - self.position['qAsk']
         if f_pos <= (self.max_pos * -1):
-            valid_actions = [None, 'BEST_OFFER', 'SELL']
+            valid_actions = [None, 'BEST_BID', 'BUY']
+            # valid_actions = [None, 'BEST_BID']
             # valid_actions = [None, 'SELL']
         elif f_pos >= self.max_pos:
-            valid_actions = [None, 'BEST_BID', 'BUY']
+            valid_actions = [None, 'BEST_OFFER', 'SELL']
+            # valid_actions = [None, 'BEST_OFFER']
             # valid_actions = [None, 'BUY']
-        # NOTE: I should change just this row when implementing
+        # if abs(f_pos) > 100:
+        #     print valid_actions
+        #     raise NotImplementedError
+        # NOTE: I should change just this function when implementing
         # the learning agent
         s_action = self._choose_an_action(t_state, valid_actions)
         # build a list of messages based on the action taken
@@ -265,7 +282,8 @@ class BasicAgent(Agent):
         else:
             return translators.translate_to_agent(self,
                                                   s_action,
-                                                  my_ordmatch)
+                                                  my_ordmatch,
+                                                  0.00)
         return []
 
     def _apply_policy(self, state, action, reward):
@@ -290,7 +308,9 @@ class BasicLearningAgent(BasicAgent):
         :*param f_gamma: float. weight of delayed versus immediate rewards
         '''
         # sets self.env = env, state = None, next_waypoint = None
-        super(BasicLearningAgent, self).__init__(env, i_id)
+        super(BasicLearningAgent, self).__init__(env=env,
+                                                 i_id=i_id,
+                                                 f_min_time=f_min_time)
         # Initialize any additional variables here
         self.max_pos = 100.
         self.q_table = defaultdict(lambda: defaultdict(float))
@@ -298,6 +318,7 @@ class BasicLearningAgent(BasicAgent):
         self.old_state = None
         self.last_action = None
         self.last_reward = None
+        self.s_agent_name = 'BasicLearningAgent'
 
     def _choose_an_action(self, t_state, valid_actions):
         '''
@@ -314,6 +335,11 @@ class BasicLearningAgent(BasicAgent):
             if val > max_val:
                 max_val = val
                 best_Action = action
+        if best_Action not in valid_actions:
+            best_Action = random.choice(valid_actions)
+        if abs(self.position['qBid'] - self.position['qAsk']) > 100:
+            print self.position
+            raise NotImplementedError
         return best_Action
 
     def _apply_policy(self, state, action, reward):
@@ -355,7 +381,8 @@ def run():
     """
     # Set up environment and agent
     e = Environment(i_idx=1)  # create environment
-    a = e.create_agent(BasicAgent, f_min_time=1.)  # create agent
+    # a = e.create_agent(BasicAgent, f_min_time=10.)  # create agent
+    a = e.create_agent(BasicLearningAgent, f_min_time=10.)  # create agent
     e.set_primary_agent(a)  # specify agent to track
 
     # Now simulate it

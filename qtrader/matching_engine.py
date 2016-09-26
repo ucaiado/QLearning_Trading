@@ -17,7 +17,7 @@ import pprint
 from translators import translate_trades, translate_row
 
 # global variable
-DEBUG = False
+DEBUG = True
 
 '''
 Begin help functions
@@ -114,6 +114,7 @@ class BloombergMatching(OrderMatching):
         self.mid_price_10s = 0.
         self.b_get_new_row = True
         self.f_last_bucket = 0.
+        self.f_seconds_to_group = 11.
         if i_idx:
             self.idx = i_idx
 
@@ -206,8 +207,9 @@ class BloombergMatching(OrderMatching):
             self.best_bid = best_bid
             self.best_ask = best_ask
         # hold some variables from the start of 10s fold
-        if self.last_date % 10 == 0 and self.f_last_bucket != self.last_date:
-            self.f_last_bucket = self.last_date
+        if self.last_date % self.f_seconds_to_group == 0 and \
+           self.f_last_bucket != self.last_date:
+            self.f_last_bucket = self.last_date + 1 - 1
             self.i_ofi_10s = self.i_ofi
             self.i_ofi_10s += 1 - 1
             self.i_qty_traded_at_bid_10s = self.i_qty_traded_at_bid

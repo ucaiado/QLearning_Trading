@@ -232,13 +232,14 @@ def translate_row(idx, row, my_ordmatch, s_side=None):
     return l_msg
 
 
-def translate_to_agent(agent, s_action, my_ordmatch):
+def translate_to_agent(agent, s_action, my_ordmatch, f_spread=0.10):
     '''
     Translate a line from a file of the bloomberg level I data. Is expected
     that the agent has one orders by side, at maximum
     :param agent: Agent Object.
     :param s_action: string.
     :param my_ordmatch: OrderMatching object.
+    :param f_spread: float. Number of cents to include in the price
     '''
     # reconver some variables and check if it is a valid row
     my_book = my_ordmatch.my_book
@@ -295,7 +296,7 @@ def translate_to_agent(agent, s_action, my_ordmatch):
                          'order_id': my_book.i_last_order_id + 1,
                          'order_entry_step': my_ordmatch.i_nrow,
                          'new_order_id': my_book.i_last_order_id + 1,
-                         'order_price': t_best_bid[0] - 0.10,
+                         'order_price': t_best_bid[0] - f_spread,
                          'order_side': 'BID',
                          'order_status': 'Replaced',
                          'total_qty_order': 100,
@@ -312,7 +313,7 @@ def translate_to_agent(agent, s_action, my_ordmatch):
                      'order_id': my_book.i_last_order_id + 1,
                      'order_entry_step': my_ordmatch.i_nrow,
                      'new_order_id': my_book.i_last_order_id + 1,
-                     'order_price': t_best_bid[0] - 0.10,
+                     'order_price': t_best_bid[0] - f_spread,
                      'order_side': 'BID',
                      'order_status': 'New',
                      'total_qty_order': 100,
@@ -347,7 +348,7 @@ def translate_to_agent(agent, s_action, my_ordmatch):
                          'order_id': my_book.i_last_order_id + 1,
                          'order_entry_step': my_ordmatch.i_nrow,
                          'new_order_id': my_book.i_last_order_id + 1,
-                         'order_price': t_best_ask[0] + 0.10,
+                         'order_price': t_best_ask[0] + f_spread,
                          'order_side': 'ASK',
                          'order_status': 'Replaced',
                          'total_qty_order': 100,
@@ -364,7 +365,7 @@ def translate_to_agent(agent, s_action, my_ordmatch):
                      'order_id': my_book.i_last_order_id + 1,
                      'order_entry_step': my_ordmatch.i_nrow,
                      'new_order_id': my_book.i_last_order_id + 1,
-                     'order_price': t_best_ask[0] + 0.10,
+                     'order_price': t_best_ask[0] + f_spread,
                      'order_side': 'ASK',
                      'order_status': 'New',
                      'total_qty_order': 100,
