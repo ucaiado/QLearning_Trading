@@ -269,7 +269,7 @@ class Environment(object):
         # update current position in the agent state
         state = self.agent_states[agent]
         for s_key in position:
-            state[s_key] = position[s_key]
+            state[s_key] = float(position[s_key])
         state['Position'] = state['qBid'] - state['qAsk']
         # check if it has orders in the best bid and offer
         tree_bid = agent.d_order_tree['BID']
@@ -277,7 +277,7 @@ class Environment(object):
         # Check if the agent has orders at the best prices
         state['best_bid'] = False
         state['best_offer'] = False
-        if tree_bid.count != 0 and tree_ask.count != 0:
+        if tree_bid.count != 0:
             # f_best_bid = tree_bid.max_key()
             # f_best_ask = tree_ask.min_key()
             # f_ask = agent.env.order_matching.best_ask[0]
@@ -285,13 +285,15 @@ class Environment(object):
             # state['best_bid'] = f_best_bid >= f_bid
             # state['best_offer'] = f_best_bid <= f_ask
             state['best_bid'] = True
+        if tree_ask.count != 0:
             state['best_offer'] = True
 
         # calculate the current PnL
         sense = self.sense(agent)
         f_pnl = state['Ask'] - state['Bid']
         f_pnl += state['Position'] * sense['midPrice']
-        f_pnl -= ((state['Ask'] + state['Bid']) * 0.00035)  # costs
+        # include costs
+        # f_pnl -= ((state['Ask'] + state['Bid']) * 0.00035)
         # measure the reward
         reward = 0.
         reward = np.around(f_pnl - state['Pnl'], 2)
@@ -354,7 +356,7 @@ class Agent(object):
         self.env = env
         self.i_id = i_id
         self.state = None
-        self.position = {'qAsk': 0, 'Ask': 0., 'qBid': 0, 'Bid': 0.}
+        self.position = {'qAsk': 0., 'Ask': 0., 'qBid': 0., 'Bid': 0.}
         self.d_order_tree = {'BID': FastRBTree(), 'ASK': FastRBTree()}
         self.d_order_map = {}
 
@@ -363,7 +365,7 @@ class Agent(object):
         Reset the state and the agent's memory about its positions
         '''
         self.state = None
-        self.position = {'qAsk': 0, 'Ask': 0., 'qBid': 0, 'Bid': 0.}
+        self.position = {'qAsk': 0., 'Ask': 0., 'qBid': 0., 'Bid': 0.}
         self.d_order_tree = {'BID': FastRBTree(), 'ASK': FastRBTree()}
         self.d_order_map = {}
 
@@ -396,8 +398,8 @@ class Agent(object):
             # account the trades
             s_tside = self.trade_side[msg['agressor_indicator']]
             s_tside = s_tside[msg['order_side']]
-            self.position['q' + s_tside] += msg['order_qty']
-            f_volume = msg['order_price'] * msg['order_qty']
+            self.position['q' + s_tside] += float(msg['order_qty'])
+            f_volume = msg['order_price'] * float(msg['order_qty'])
             self.position[s_tside] += f_volume
 
     def update(self, msg):

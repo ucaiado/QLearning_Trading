@@ -324,10 +324,10 @@ def translate_to_agent(agent, s_action, my_ordmatch, f_spread=0.10):
             my_book.i_last_order_id += 1
             l_msg.append(d_rtn.copy())
     # update when it has a limit order book message related to the ask side
-    if s_action in ['BEST_ASK', 'BEST_BOTH']:
+    if s_action in ['BEST_OFFER', 'BEST_BOTH']:
         # cancel ask side
         if my_order_bid:
-            if s_action == 'BEST_ASK':
+            if s_action == 'BEST_OFFER':
                 # and cancel them
                 d_rtn = my_order_bid.copy()
                 d_rtn['order_status'] = 'Canceled'

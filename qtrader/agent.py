@@ -218,9 +218,9 @@ class BasicAgent(Agent):
             if msg_env['order_status'] in ['Filled', 'Partialy Filled']:
                 return [msg_env]
         # select a randon action, but not trade more than the maximum position
-        valid_actions = [None, 'BEST_BID', 'BEST_OFFER', 'BEST_BOTH',
-                         'SELL', 'BUY']
-        # valid_actions = [None, 'BEST_BID', 'BEST_OFFER', 'BEST_BOTH']
+        # valid_actions = [None, 'BEST_BID', 'BEST_OFFER', 'BEST_BOTH',
+        #                  'SELL', 'BUY']
+        valid_actions = [None, 'BEST_BID', 'BEST_OFFER', 'BEST_BOTH']
         # valid_actions = [None, 'SELL', 'BUY']
         f_pos = self.position['qBid'] - self.position['qAsk']
         if f_pos <= (self.max_pos * -1):
@@ -264,26 +264,26 @@ class BasicAgent(Agent):
         # generate trade
         if s_action == 'BUY':
             row['Type'] = 'TRADE'
-            row['Price'] = self.env.best_bid[0]
-            return translators.translate_trades(idx,
-                                                row,
-                                                my_ordmatch,
-                                                'BID',
-                                                i_id)
-        elif s_action == 'SELL':
-            row['Type'] = 'TRADE'
             row['Price'] = self.env.best_ask[0]
             return translators.translate_trades(idx,
                                                 row,
                                                 my_ordmatch,
                                                 'ASK',
                                                 i_id)
+        elif s_action == 'SELL':
+            row['Type'] = 'TRADE'
+            row['Price'] = self.env.best_bid[0]
+            return translators.translate_trades(idx,
+                                                row,
+                                                my_ordmatch,
+                                                'BID',
+                                                i_id)
         # generate limit order or cancel everything
         else:
             return translators.translate_to_agent(self,
                                                   s_action,
                                                   my_ordmatch,
-                                                  0.00)
+                                                  0.02)
         return []
 
     def _apply_policy(self, state, action, reward):
@@ -320,26 +320,33 @@ class BasicLearningAgent(BasicAgent):
         self.last_reward = None
         self.s_agent_name = 'BasicLearningAgent'
 
-    def _choose_an_action(self, t_state, valid_actions):
+    def _choose_an_action(self, d_state, valid_actions):
         '''
         Return an action from a list of allowed actions according to the
         agent policy
         :param valid_actions: list. List of the allowed actions
-        :param t_state: tuple. The inputs to be considered by the agent
+        :param d_state: dictionary. The inputs to be considered by the agent
         '''
+        # convert position to float (I should correct that somewhere)
+        d_state['Position'] = float(d_state['Position'])
         # set a random action in case of exploring world
-        max_val = 0
+        max_val = 0.
         best_Action = random.choice(valid_actions)
         # arg max Q-value choosing a action better than zero
-        for action, val in self.q_table[str(t_state)].iteritems():
+        for action, val in self.q_table[str(d_state)].iteritems():
             if val > max_val:
                 max_val = val
                 best_Action = action
         if best_Action not in valid_actions:
             best_Action = random.choice(valid_actions)
-        if abs(self.position['qBid'] - self.position['qAsk']) > 100:
-            print self.position
-            raise NotImplementedError
+        if abs(self.position['qBid'] - self.position['qAsk']) > 0:
+            if not isinstance(best_Action, type(None)):
+                s_rtn = '\n\n=================\n best action:{}, position: {},'
+                s_rtn += ' valid actions: {}\n===========\n\n\n'
+                s_rtn = s_rtn.format(best_Action, self.position, valid_actions)
+                root.debug(s_rtn)
+                # raise NotImplementedError
+                pass
         return best_Action
 
     def _apply_policy(self, state, action, reward):
@@ -349,6 +356,8 @@ class BasicLearningAgent(BasicAgent):
         :param action: string. the action selected at this time
         :param reward: integer. the rewards received due to the action
         '''
+        # convert position to float (I should correct that somewhere)
+        state['Position'] = float(state['Position'])
         # check if there is some state in cache
         if self.old_state:
             # apply: Q <- r + y max_a' Q(s', a')
@@ -375,6 +384,70 @@ class BasicLearningAgent(BasicAgent):
             self.q_table[s_aux][self.last_action] = self.last_reward
 
 
+class LearningAgent_k(BasicLearningAgent):
+    '''
+    A representation of an agent that learns to trade adopting a probabilistic
+    approach to select actions
+    '''
+    def __init__(self, env, i_id, f_min_time=3600., f_gamma=0.5, f_k=0.3):
+        '''
+        Initialize a LearningAgent_k. Save all parameters as attributes
+        :param env: Environment object. The grid-like world
+        :*param f_gamma: float. weight of delayed versus immediate rewards
+        :*param f_k: float. How strongly should favor high Q-hat values
+        '''
+        # sets self.env = env, state = None, next_waypoint = None, and a
+        # default color
+        super(LearningAgent_k, self).__init__(env=env,
+                                              i_id=i_id,
+                                              f_min_time=f_min_time,
+                                              f_gamma=f_gamma)
+        # Initialize any additional variables here
+        self.f_k = f_k
+        self.s_agent_name = 'LearningAgent_k'
+
+    def _choose_an_action(self, t_state, valid_actions):
+        '''
+        Return an action according to the agent policy
+        :param valid_actions: list. List of the allowed actions
+        :param t_state: tuple. The inputs to be considered by the agent
+        '''
+        # set a random action in case of exploring world
+        max_val = 0.
+        cum_prob = 1.
+        f_count = 0.
+        f_prob = 0.
+        best_Action = random.choice(valid_actions)
+        # arg max Q-value choosing a action better than zero
+        for action, val in self.q_table[str(t_state)].iteritems():
+            # just consider action with positive rewards
+            # due to the possibility to use 0 < k < 1.
+            if val > 0.:
+                f_count += 1.
+                cum_prob += self.f_k ** val
+                if val > max_val:
+                    max_val = val
+                    best_Action = action
+        # if the agent still did not test all actions: (4. - f_count) * 0.25
+        f_prob = ((self.f_k ** max_val) / ((4. - f_count) * 0.08 + cum_prob))
+        # print 'PROB: {:.2f}'.format(f_prob)
+        # choose the best_action just if: eps <= k**thisQhat / sum(k**Qhat)
+        if (random.random() <= f_prob):
+            s_print = 'action: explotation, k = {}'.format(self.f_k)
+            if DEBUG:
+                root.debug(s_print)
+            else:
+                print s_print
+            return best_Action
+        else:
+            s_print = 'action: exploration, k = {}'.format(self.f_k)
+            if DEBUG:
+                root.debug(s_print)
+            else:
+                print s_print
+            return random.choice(valid_actions)
+
+
 def run():
     """
     Run the agent for a finite number of trials.
@@ -387,7 +460,7 @@ def run():
 
     # Now simulate it
     sim = Simulator(e, update_delay=1.00, display=False)
-    sim.run(n_trials=2)  # run for a specified number of trials
+    sim.run(n_trials=18)  # run for a specified number of trials
 
     # save the Q table of the primary agent
     save_q_table(e)

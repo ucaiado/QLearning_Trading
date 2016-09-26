@@ -114,7 +114,7 @@ class BloombergMatching(OrderMatching):
         self.mid_price_10s = 0.
         self.b_get_new_row = True
         self.f_last_bucket = 0.
-        self.f_seconds_to_group = 11.
+        self.f_seconds_to_group = 10.
         if i_idx:
             self.idx = i_idx
 
