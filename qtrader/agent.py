@@ -67,6 +67,10 @@ class BasicAgent(Agent):
     '''
     A Basic agent representation that learns to drive in the smartcab world.
     '''
+    actions_to_open = [None, 'BEST_BID', 'BEST_OFFER', 'BEST_BOTH']
+    actions_to_close_when_short = [None, 'BEST_BID']
+    actions_to_close_when_long = [None, 'BEST_OFFER']
+
     def __init__(self, env, i_id, f_min_time=3600.):
         '''
         Initiate a BasicAgent object. save all parameters as attributes
@@ -195,7 +199,7 @@ class BasicAgent(Agent):
         i_cluster = self.scaler.transform(d_data)
         d_rtn = {}
         d_rtn['cluster'] = i_cluster
-        d_rtn['Position'] = state['Position']
+        d_rtn['Position'] = float(state['Position'])
         d_rtn['best_bid'] = state['best_bid']
         d_rtn['best_offer'] = state['best_offer']
 
@@ -218,22 +222,12 @@ class BasicAgent(Agent):
             if msg_env['order_status'] in ['Filled', 'Partialy Filled']:
                 return [msg_env]
         # select a randon action, but not trade more than the maximum position
-        # valid_actions = [None, 'BEST_BID', 'BEST_OFFER', 'BEST_BOTH',
-        #                  'SELL', 'BUY']
-        valid_actions = [None, 'BEST_BID', 'BEST_OFFER', 'BEST_BOTH']
-        # valid_actions = [None, 'SELL', 'BUY']
+        valid_actions = list(self.actions_to_open)
         f_pos = self.position['qBid'] - self.position['qAsk']
         if f_pos <= (self.max_pos * -1):
-            valid_actions = [None, 'BEST_BID', 'BUY']
-            # valid_actions = [None, 'BEST_BID']
-            # valid_actions = [None, 'SELL']
+            valid_actions = list(self.actions_to_close_when_short)  # copy
         elif f_pos >= self.max_pos:
-            valid_actions = [None, 'BEST_OFFER', 'SELL']
-            # valid_actions = [None, 'BEST_OFFER']
-            # valid_actions = [None, 'BUY']
-        # if abs(f_pos) > 100:
-        #     print valid_actions
-        #     raise NotImplementedError
+            valid_actions = list(self.actions_to_close_when_long)
         # NOTE: I should change just this function when implementing
         # the learning agent
         s_action = self._choose_an_action(t_state, valid_actions)
@@ -283,7 +277,7 @@ class BasicAgent(Agent):
             return translators.translate_to_agent(self,
                                                   s_action,
                                                   my_ordmatch,
-                                                  0.02)
+                                                  0.01)
         return []
 
     def _apply_policy(self, state, action, reward):
@@ -334,11 +328,11 @@ class BasicLearningAgent(BasicAgent):
         best_Action = random.choice(valid_actions)
         # arg max Q-value choosing a action better than zero
         for action, val in self.q_table[str(d_state)].iteritems():
-            if val > max_val:
-                max_val = val
-                best_Action = action
-        if best_Action not in valid_actions:
-            best_Action = random.choice(valid_actions)
+            # if the agent is positioned, should check just what is allowed
+            if action in valid_actions:
+                if val > max_val:
+                    max_val = val
+                    best_Action = action
         if abs(self.position['qBid'] - self.position['qAsk']) > 0:
             if not isinstance(best_Action, type(None)):
                 # s_rtn = '\n\n=================\n best action:{}, position:'
@@ -391,7 +385,7 @@ class LearningAgent_k(BasicLearningAgent):
     A representation of an agent that learns to trade adopting a probabilistic
     approach to select actions
     '''
-    def __init__(self, env, i_id, f_min_time=3600., f_gamma=0.5, f_k=0.3):
+    def __init__(self, env, i_id, f_min_time=3600., f_gamma=0.5, f_k=0.8):
         '''
         Initialize a LearningAgent_k. Save all parameters as attributes
         :param env: Environment object. The grid-like world
@@ -422,32 +416,33 @@ class LearningAgent_k(BasicLearningAgent):
         best_Action = random.choice(valid_actions)
         # arg max Q-value choosing a action better than zero
         for action, val in self.q_table[str(t_state)].iteritems():
-            # just consider action with positive rewards
-            # due to the possibility to use 0 < k < 1.
-            if val > 0.:
-                f_count += 1.
-                cum_prob += self.f_k ** val
-                if val > max_val:
-                    max_val = val
-                    best_Action = action
-        # check if the best action is a allowed action
-        if best_Action not in valid_actions:
-            best_Action = random.choice(valid_actions)
-        # if the agent still did not test all actions: (4. - f_count) * 0.25
-        f_prob = ((self.f_k ** max_val) / ((4. - f_count) * 0.08 + cum_prob))
+            # if the agent is positioned, should check just what is allowed
+            if action in valid_actions:
+                # just consider action with positive rewards
+                # due to the possibility to use 0 < k < 1.
+                if val > 0.:
+                    f_count += 1.
+                    cum_prob += self.f_k ** val
+                    if val > max_val:
+                        max_val = val
+                        best_Action = action
+        # if the agent still did not test all actions: (5. - f_count) * 0.25
+        f_prob = ((self.f_k ** max_val) / ((5. - f_count) * 0.08 + cum_prob))
         # print 'PROB: {:.2f}'.format(f_prob)
         # choose the best_action just if: eps <= k**thisQhat / sum(k**Qhat)
         if (random.random() <= f_prob):
-            s_print = 'LearningAgent_k.choose_an_action(): '
-            s_print += 'action: explotation, k = {}'.format(self.f_k)
+            s_print = '{}.choose_an_action(): '.format(self.s_agent_name)
+            s_print += 'action = explotation, k = {}'.format(self.f_k)
+            s_print += ', prob: {:0.2f}'.format(f_prob)
             if DEBUG:
                 root.debug(s_print)
             else:
                 print s_print
             return best_Action
         else:
-            s_print = 'LearningAgent_k.choose_an_action(): '
-            s_print += 'action: exploration, k = {}'.format(self.f_k)
+            s_print = '{}.choose_an_action(): '.format(self.s_agent_name)
+            s_print += 'action = exploration, k = {}'.format(self.f_k)
+            s_print += ', prob: {:0.2f}'.format(f_prob)
             if DEBUG:
                 root.debug(s_print)
             else:
@@ -459,16 +454,19 @@ def run():
     """
     Run the agent for a finite number of trials.
     """
-    # Set up environment and agent
-    e = Environment(i_idx=2)  # create environment
-    # a = e.create_agent(BasicAgent, f_min_time=10.)  # create agent
-    # a = e.create_agent(BasicLearningAgent, f_min_time=10.)  # create agent
-    a = e.create_agent(LearningAgent_k, f_min_time=60.)  # create agent
+    # Set up environment
+    s_fname = 'data/petr4_0725_0818_2.zip'
+    # s_fname = 'data/petr4_0819_0926_2.zip'
+    e = Environment(s_fname=s_fname, i_idx=2)
+    # create agent
+    # a = e.create_agent(BasicAgent, f_min_time=2.)
+    # a = e.create_agent(BasicLearningAgent, f_min_time=20.)
+    a = e.create_agent(LearningAgent_k, f_min_time=2., f_k=0.5)
     e.set_primary_agent(a)  # specify agent to track
 
     # Now simulate it
     sim = Simulator(e, update_delay=1.00, display=False)
-    sim.run(n_trials=17)  # run for a specified number of trials
+    sim.run(n_trials=50)  # run for a specified number of trials
 
     # save the Q table of the primary agent
     save_q_table(e)

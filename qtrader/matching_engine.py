@@ -114,7 +114,7 @@ class BloombergMatching(OrderMatching):
         self.mid_price_10s = 0.
         self.b_get_new_row = True
         self.f_last_bucket = 0.
-        self.f_seconds_to_group = 61.
+        self.f_seconds_to_group = 21.
         if i_idx:
             self.idx = i_idx
 
@@ -122,6 +122,8 @@ class BloombergMatching(OrderMatching):
         '''
         Return the name of the files used in the actual trial
         '''
+        if int(self.idx) > len(self.l_fnames)-1:
+            return None
         return self.l_fnames[int(self.idx)].filename
 
     def reshape_row(self, idx, row, s_side=None):
@@ -227,6 +229,8 @@ class BloombergMatching(OrderMatching):
         '''
         # if it will open a files that doesnt exist, stop
         if int(self.idx) > self.max_nfiles:
+            raise StopIteration
+        if int(self.idx) > len(self.l_fnames)-1:
             raise StopIteration
         # if it is the first line of the file, open it and cerate a new book
         if self.i_nrow == 0:

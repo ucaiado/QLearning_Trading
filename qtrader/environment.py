@@ -48,10 +48,11 @@ class Environment(object):
                      'SELL',
                      'BUY']
 
-    def __init__(self, i_idx=None):
+    def __init__(self, s_fname, i_idx=None):
         '''
         Initialize an Environment object
-        :param i_idx: integer. The index of the start file to be read
+        :param s_fname: string. the container zip file to be used in simulation
+        :*param i_idx: integer. The index of the start file to be read
         '''
         self.s_instrument = 'PETR4'
         self.done = False
@@ -71,7 +72,6 @@ class Environment(object):
         # Initiate Matching Engine
         s_aux = self.s_instrument
         i_naux = self.num_dummies+1
-        s_fname = 'data/petr4_0725_0818_2.zip'  # hardcoded
         self.order_matching = BloombergMatching(env=self,
                                                 s_instrument=s_aux,
                                                 i_num_agents=i_naux,
@@ -156,10 +156,11 @@ class Environment(object):
         # reset environment
         s_msg = 'Environment.reset(): Trial set up to use {} file'
         s_name = self.order_matching.get_trial_identification()
-        if DEBUG:
-            logging.info(s_msg.format(s_name))
-        else:
-            print s_msg.format(s_name)
+        if s_name:
+            if DEBUG:
+                logging.info(s_msg.format(s_name))
+            else:
+                print s_msg.format(s_name)
 
         # Initialize agent(s)
         for agent in self.agent_states.iterkeys():
