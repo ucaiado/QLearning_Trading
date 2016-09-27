@@ -44,7 +44,7 @@ I-1
 I0
 tp19
 bI00
-S'J\xffn\x1e\xaawy\xbf'
+S'\x90u\x84>\x0f\x17v\xbf'
 p20
 tp21
 bsS'feature_range'
@@ -66,7 +66,7 @@ Rp27
 tp28
 g17
 I00
-S'\xef\xe2m\xf8\x89\xe2\x86?'
+S'\xd2\xadON\xe0\xf5\x80?'
 p29
 tp30
 bsS'scale_'
@@ -83,7 +83,7 @@ Rp34
 tp35
 g17
 I00
-S'\xe8\xc8\xc8\xb6p_V@'
+S'\x96\xaeAV\x180^@'
 p36
 tp37
 bsS'data_max_'
@@ -100,12 +100,12 @@ Rp41
 tp42
 g17
 I00
-S'\x94\xc6l\xd2iMt?'
+S'&\xcc5\xbcb\xa9g?'
 p43
 tp44
 bsS'n_samples_seen_'
 p45
-I441
+I1303
 sS'min_'
 p46
 g7
@@ -120,7 +120,7 @@ Rp49
 tp50
 g17
 I00
-S'\xe6vB\xea9\xce\xe1?'
+S'\x1f\xb4P\xae\xd1\xd6\xe4?'
 p51
 tp52
 bsS'copy'
