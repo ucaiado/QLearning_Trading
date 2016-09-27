@@ -158,7 +158,7 @@ def translate_row(idx, row, my_ordmatch, s_side=None):
                                                                 f_max,
                                                                 reverse=False)
         for f_price, obj_price in gen_bk:
-            assert obj_price.order_tree.count <= 2, 'More than two offers'
+            # assert obj_price.order_tree.count <= 2, 'More than two offers'
             for idx_ord, obj_order in obj_price.order_tree.nsmallest(1000):
                 # check if is the order from the primary agent
                 if my_ordmatch.env.primary_agent:

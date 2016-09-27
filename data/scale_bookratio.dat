@@ -66,7 +66,7 @@ Rp27
 tp28
 g17
 I00
-S'\xc8\xae>V2\x9e*@'
+S'\xa6E\xb9\x85s\xe8(@'
 p29
 tp30
 bsS'scale_'
@@ -83,7 +83,7 @@ Rp34
 tp35
 g17
 I00
-S'\x06.8\xe21<\xb3?'
+S'\x07t\x19\x0c>\x8e\xb4?'
 p36
 tp37
 bsS'data_max_'
@@ -100,12 +100,12 @@ Rp41
 tp42
 g17
 I00
-S'\xc5\xda=\x1fqP\x1a@'
+S'\x80\x083~\xf3\xe4\x16@'
 p43
 tp44
 bsS'n_samples_seen_'
 p45
-I2548
+I441
 sS'min_'
 p46
 g7
@@ -120,7 +120,7 @@ Rp49
 tp50
 g17
 I00
-S'\xbf(%\xfc\xbc.\xe0?'
+S'\x87B`t#K\xe1?'
 p51
 tp52
 bsS'copy'

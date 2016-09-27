@@ -341,10 +341,12 @@ class BasicLearningAgent(BasicAgent):
             best_Action = random.choice(valid_actions)
         if abs(self.position['qBid'] - self.position['qAsk']) > 0:
             if not isinstance(best_Action, type(None)):
-                s_rtn = '\n\n=================\n best action:{}, position: {},'
-                s_rtn += ' valid actions: {}\n===========\n\n\n'
-                s_rtn = s_rtn.format(best_Action, self.position, valid_actions)
-                root.debug(s_rtn)
+                # s_rtn = '\n\n=================\n best action:{}, position:'
+                # s_rtn += ' {}, valid actions: {}\n===========\n\n\n'
+                # s_rtn = s_rtn.format(best_Action,
+                #                      self.position,
+                #                      valid_actions)
+                # root.debug(s_rtn)
                 # raise NotImplementedError
                 pass
         return best_Action
@@ -428,19 +430,24 @@ class LearningAgent_k(BasicLearningAgent):
                 if val > max_val:
                     max_val = val
                     best_Action = action
+        # check if the best action is a allowed action
+        if best_Action not in valid_actions:
+            best_Action = random.choice(valid_actions)
         # if the agent still did not test all actions: (4. - f_count) * 0.25
         f_prob = ((self.f_k ** max_val) / ((4. - f_count) * 0.08 + cum_prob))
         # print 'PROB: {:.2f}'.format(f_prob)
         # choose the best_action just if: eps <= k**thisQhat / sum(k**Qhat)
         if (random.random() <= f_prob):
-            s_print = 'action: explotation, k = {}'.format(self.f_k)
+            s_print = 'LearningAgent_k.choose_an_action(): '
+            s_print += 'action: explotation, k = {}'.format(self.f_k)
             if DEBUG:
                 root.debug(s_print)
             else:
                 print s_print
             return best_Action
         else:
-            s_print = 'action: exploration, k = {}'.format(self.f_k)
+            s_print = 'LearningAgent_k.choose_an_action(): '
+            s_print += 'action: exploration, k = {}'.format(self.f_k)
             if DEBUG:
                 root.debug(s_print)
             else:
@@ -453,14 +460,15 @@ def run():
     Run the agent for a finite number of trials.
     """
     # Set up environment and agent
-    e = Environment(i_idx=1)  # create environment
+    e = Environment(i_idx=2)  # create environment
     # a = e.create_agent(BasicAgent, f_min_time=10.)  # create agent
-    a = e.create_agent(BasicLearningAgent, f_min_time=10.)  # create agent
+    # a = e.create_agent(BasicLearningAgent, f_min_time=10.)  # create agent
+    a = e.create_agent(LearningAgent_k, f_min_time=60.)  # create agent
     e.set_primary_agent(a)  # specify agent to track
 
     # Now simulate it
     sim = Simulator(e, update_delay=1.00, display=False)
-    sim.run(n_trials=18)  # run for a specified number of trials
+    sim.run(n_trials=17)  # run for a specified number of trials
 
     # save the Q table of the primary agent
     save_q_table(e)

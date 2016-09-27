@@ -189,10 +189,17 @@ class Environment(object):
         # check if should update the primary
         if self.primary_agent:
             # ensure that the market is opened
+            # TODO: modify this line
+            b_are_there_orders = True
+            if self.order_matching.my_book.book_ask.price_tree.count == 0:
+                b_are_there_orders = False
+            if self.order_matching.my_book.book_bid.price_tree.count == 0:
+                b_are_there_orders = False
             if self.order_matching.last_date >= (10*60**2 + 10 * 60):
-                if self.primary_agent.should_update():
-                    self.update_agent_state(agent=self.primary_agent,
-                                            msg=None)
+                if b_are_there_orders:
+                    if self.primary_agent.should_update():
+                        self.update_agent_state(agent=self.primary_agent,
+                                                msg=None)
         # check if the market is closed
         if self.order_matching.last_date >= (16*60**2 + 30 * 60):
             self.done = True
@@ -293,7 +300,7 @@ class Environment(object):
         f_pnl = state['Ask'] - state['Bid']
         f_pnl += state['Position'] * sense['midPrice']
         # include costs
-        # f_pnl -= ((state['Ask'] + state['Bid']) * 0.00035)
+        f_pnl -= ((state['Ask'] + state['Bid']) * 0.00025)
         # measure the reward
         reward = 0.
         reward = np.around(f_pnl - state['Pnl'], 2)
