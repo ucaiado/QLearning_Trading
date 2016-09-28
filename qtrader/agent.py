@@ -70,6 +70,8 @@ class BasicAgent(Agent):
     actions_to_open = [None, 'BEST_BID', 'BEST_OFFER', 'BEST_BOTH']
     actions_to_close_when_short = [None, 'BEST_BID']
     actions_to_close_when_long = [None, 'BEST_OFFER']
+    actions_to_stop_when_short = [None, 'BEST_BID', 'BUY']
+    actions_to_stop_when_long = [None, 'BEST_OFFER', 'SELL']
 
     def __init__(self, env, i_id, f_min_time=3600.):
         '''
@@ -86,6 +88,8 @@ class BasicAgent(Agent):
         self.max_pos = 100.
         self.scaler = preprocess.ClusterScaler()
         self.s_agent_name = 'BasicAgent'
+        self.last_max_pnl = None
+        self.f_delta_pnl = 0.
 
     def reset(self):
         '''
@@ -167,12 +171,27 @@ class BasicAgent(Agent):
         # print agent inputs
         s_date = self.env.order_matching.row['Date']
         s_rtn = '{}.update(): time = {}, position = {}, inputs = {}, action'
-        s_rtn += ' = {}, price_action = {}, reward = {}'
+        s_rtn += ' = {}, price_action = {}, pnl = {:0.2f}, delta_pnl = {:0.2f}'
+        s_rtn += ', reward = {}'
         inputs['midPrice'] = '{:0.2f}'.format(inputs['midPrice'])
+        # inputs['logret'] = '{:0.4f}%'.format(inputs['logret'] * 100)
         # inputs['deltaMid'] = '{:0.3f}'.format(inputs['deltaMid'])
         inputs.pop('deltaMid')
+        inputs.pop('logret')
+        inputs.pop('qAggr')
+        inputs.pop('qTraded')
         inputs['cluster'] = self.state['cluster']
-        # TODO: include the cluster of the inter representation in input
+        # check the last maximum pnl considering just the current position
+        f_delta_pnl = 0.
+        f_pnl = self.env.agent_states[self]['Pnl']
+        if self.env.agent_states[self]['Position'] == 0:
+            self.last_max_pnl = None
+        else:
+            self.last_max_pnl = max(self.last_max_pnl,
+                                    self.env.agent_states[self]['Pnl'])
+            f_delta_pnl = f_pnl - self.last_max_pnl
+            self.f_delta_pnl = f_delta_pnl
+        # Print inputs and agent state
         if DEBUG:
             root.debug(s_rtn.format(self.s_agent_name,
                                     s_date,
@@ -180,6 +199,8 @@ class BasicAgent(Agent):
                                     inputs,
                                     s_action2,
                                     l_prices_to_print,
+                                    f_pnl,
+                                    f_delta_pnl,
                                     reward))
         else:
             print s_rtn.format(self.s_agent_name,
@@ -188,6 +209,8 @@ class BasicAgent(Agent):
                                inputs,
                                s_action2,
                                l_prices_to_print,
+                               f_pnl,
+                               f_delta_pnl,
                                reward)
 
     def _get_intern_state(self, inputs, state):
@@ -232,8 +255,12 @@ class BasicAgent(Agent):
         f_pos = self.position['qBid'] - self.position['qAsk']
         if f_pos <= (self.max_pos * -1):
             valid_actions = list(self.actions_to_close_when_short)  # copy
+            if abs(self.f_delta_pnl) > 4:
+                valid_actions = list(self.actions_to_stop_when_short)
         elif f_pos >= self.max_pos:
             valid_actions = list(self.actions_to_close_when_long)
+            if abs(self.f_delta_pnl) > 4:
+                valid_actions = list(self.actions_to_stop_when_long)
         # NOTE: I should change just this function when implementing
         # the learning agent
         s_action = self._choose_an_action(t_state, valid_actions)
@@ -530,9 +557,9 @@ def run():
     Run the agent for a finite number of trials.
     """
     # Set up environment
-    # s_fname = 'data/petr4_0725_0818_2.zip'
+    s_fname = 'data/petr4_0725_0818_2.zip'
     # s_fname = 'data/petr4_0819_0926_2.zip'
-    s_fname = 'data/data_0725_0926.zip'
+    # s_fname = 'data/data_0725_0926.zip'
     e = Environment(s_fname=s_fname, i_idx=2)
     # create agent
     # a = e.create_agent(BasicAgent, f_min_time=2.)
@@ -547,6 +574,21 @@ def run():
 
     # save the Q table of the primary agent
     save_q_table(e)
+
+    # k tests
+    # for f_k in [0.1, 0.3, 0.5, 1., 1.5, 2., 3., 5.]:
+    #     e = Environment()
+    #     a = e.create_agent(LearningAgent_k, f_k=f_k)
+    #     e.set_primary_agent(a, enforce_deadline=True)
+    #     sim = Simulator(e, update_delay=0.01, display=False)
+    #     sim.run(n_trials=100)
+    # gamma test
+    # for f_gamma in [0.1, 0.3, 0.5, 0.7, 0.9, 1.]:
+    #     e = Environment()
+    #     a = e.create_agent(LearningAgent, f_gamma=f_gamma)
+    #     e.set_primary_agent(a, enforce_deadline=True)
+    #     sim = Simulator(e, update_delay=0.01, display=False)
+    #     sim.run(n_trials=100)
 
 
 if __name__ == '__main__':
