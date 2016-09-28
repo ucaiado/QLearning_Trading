@@ -151,7 +151,13 @@ class BasicAgent(Agent):
                 elif s_indic == 'Agressive' and s_action == 'BUY':
                     s_action2 = 'TAKE'  # take the offer
                 reward += self.env.act(self, msg)
-
+        # NOTE: I am not sure about that, but at least makes sense... I guess
+        # apply the reward to the action that has generated the trade
+        if s_action2 == s_action:
+            if s_action == 'BUY':
+                s_action = 'BEST_BID'
+            elif s_action == 'SELL':
+                s_action = 'BEST_OFFER'
         # Learn policy based on state, action, reward
         self._apply_policy(self.state, s_action, reward)
         # calculate the next time that the agent will react
@@ -352,8 +358,6 @@ class BasicLearningAgent(BasicAgent):
         :param action: string. the action selected at this time
         :param reward: integer. the rewards received due to the action
         '''
-        # convert position to float (I should correct that somewhere)
-        state['Position'] = float(state['Position'])
         # check if there is some state in cache
         if self.old_state:
             # apply: Q <- r + y max_a' Q(s', a')
@@ -427,7 +431,7 @@ class LearningAgent_k(BasicLearningAgent):
                         max_val = val
                         best_Action = action
         # if the agent still did not test all actions: (5. - f_count) * 0.25
-        f_prob = ((self.f_k ** max_val) / ((5. - f_count) * 0.08 + cum_prob))
+        f_prob = ((self.f_k ** max_val) / ((4. - f_count) * 0.08 + cum_prob))
         # print 'PROB: {:.2f}'.format(f_prob)
         # choose the best_action just if: eps <= k**thisQhat / sum(k**Qhat)
         if (random.random() <= f_prob):
@@ -450,18 +454,91 @@ class LearningAgent_k(BasicLearningAgent):
             return random.choice(valid_actions)
 
 
+class LearningAgent(LearningAgent_k):
+    '''
+    A representation of an agent that learns to drive assuming that the world
+    is a non-deterministic MDP using Q-learning and adopts a probabilistic
+    approach to select actions
+    '''
+
+    def __init__(self, env, i_id, f_min_time=3600., f_gamma=0.5, f_k=0.8):
+        '''
+        Initialize a LearningAgent. Save all parameters as attributes
+        :param env: Environment object. The grid-like world
+        :*param f_gamma: float. weight of delayed versus immediate rewards
+        :*param f_k: float. How strongly should favor high Q-hat values
+        '''
+        # sets self.env = env, state = None, next_waypoint = None, and a
+        # default color
+        super(LearningAgent, self).__init__(env=env,
+                                            i_id=i_id,
+                                            f_min_time=f_min_time,
+                                            f_gamma=f_gamma,
+                                            f_k=f_k)
+        # Initialize any additional variables here
+        self.s_agent_name = 'LearningAgent'
+        self.nvisits_table = defaultdict(lambda: defaultdict(float))
+        # print the parameter of the agent
+        # [debug]
+        if DEBUG:
+            s_rtn = 'LearningAgent.__init__(): gamma = {}, k = {}'
+            root.debug(s_rtn.format(self.f_gamma, self.f_k))
+
+    def _apply_policy(self, state, action, reward):
+        '''
+        Learn policy based on state, action, reward
+        :param state: dictionary. The current state of the agent
+        :param action: string. the action selected at this time
+        :param reward: integer. the rewards received due to the action
+        '''
+        # count the number of times this (s,a) was reached and the decay factor
+        self.nvisits_table[str(self.old_state)][self.last_action] += 1
+        f_alpha = self.nvisits_table[str(self.old_state)][self.last_action]
+        f_alpha = 1./(1.+f_alpha)
+        # f_alpha = 1.
+        # check if there is some state in cache
+        if self.old_state:
+            # apply: Q <- r + y max_a' Q(s', a')
+            # note that s' is the result of apply a in s. a' is the action that
+            # would maximize the Q-value for the state s'
+            s_state = str(state)
+            max_Q = 0.
+            l_aux = self.q_table[s_state].values()
+            if len(l_aux) > 0:
+                max_Q = max(l_aux)
+            gamma_f_max_Q_a_prime = self.f_gamma * max_Q
+            f_Qhat_prime = self.last_reward + gamma_f_max_Q_a_prime
+            f_Qhat = self.q_table[str(self.old_state)][self.last_action]
+            f_new = (1.-f_alpha) * f_Qhat + f_alpha * f_Qhat_prime
+            # apply: Q <- (1-a_n) Q(s,a) + a_n [r + y max_a' Q(s', a')]
+            self.q_table[str(self.old_state)][self.last_action] = f_new
+        # save current state, action and reward to use in the next run
+        # apply s <- s'
+        self.old_state = state
+        self.last_action = action
+        self.last_reward = reward
+        # make sure that the current state has at least the current reward
+        # notice that old_state and last_action is related to the current (s,a)
+        # at this point, and not to (s', a'), as previously used
+        if not self.q_table[str(self.old_state)][self.last_action]:
+            s_aux = str(self.old_state)
+            self.q_table[s_aux][self.last_action] = self.last_reward
+
+
 def run():
     """
     Run the agent for a finite number of trials.
     """
     # Set up environment
-    s_fname = 'data/petr4_0725_0818_2.zip'
+    # s_fname = 'data/petr4_0725_0818_2.zip'
     # s_fname = 'data/petr4_0819_0926_2.zip'
+    s_fname = 'data/data_0725_0926.zip'
     e = Environment(s_fname=s_fname, i_idx=2)
     # create agent
     # a = e.create_agent(BasicAgent, f_min_time=2.)
     # a = e.create_agent(BasicLearningAgent, f_min_time=20.)
-    a = e.create_agent(LearningAgent_k, f_min_time=2., f_k=0.5)
+    # a = e.create_agent(LearningAgent_k, f_min_time=2., f_k=0.5)
+    a = e.create_agent(LearningAgent, f_min_time=2., f_k=0.5)
     e.set_primary_agent(a)  # specify agent to track
 
     # Now simulate it
