@@ -54,7 +54,9 @@ def save_q_table(e):
     agent = e.primary_agent
     try:
         q_table = agent.q_table
-        pd.DataFrame(q_table).T.to_csv('log/qtable.log', sep='\t')
+        # s_now is a global variable
+        s_fname = 'log/{}_qtable_{}.log'.format(agent.s_agent_name, s_now[4:])
+        pd.DataFrame(q_table).T.to_csv(s_fname, sep='\t')
     except:
         print 'No Q-table to be printed'
 
@@ -89,7 +91,7 @@ class BasicAgent(Agent):
         self.scaler = preprocess.ClusterScaler()
         self.s_agent_name = 'BasicAgent'
         self.last_max_pnl = None
-        self.f_delta_pnl = 0.
+        self.f_delta_pnl = 0.  # defined at [-inf, 0)
 
     def reset(self):
         '''
@@ -234,12 +236,6 @@ class BasicAgent(Agent):
 
         return d_rtn
 
-        # t_rtn = (i_cluster,
-        #          state['Position'],
-        #          state['best_bid'],
-        #          state['best_offer'])
-        # return t_rtn
-
     def _take_action(self, t_state, msg_env):
         '''
         Return a list of messages according to the agent policy
@@ -255,11 +251,11 @@ class BasicAgent(Agent):
         f_pos = self.position['qBid'] - self.position['qAsk']
         if f_pos <= (self.max_pos * -1):
             valid_actions = list(self.actions_to_close_when_short)  # copy
-            if abs(self.f_delta_pnl) > 4:
+            if abs(self.f_delta_pnl) >= (4.-1e-6):
                 valid_actions = list(self.actions_to_stop_when_short)
         elif f_pos >= self.max_pos:
             valid_actions = list(self.actions_to_close_when_long)
-            if abs(self.f_delta_pnl) > 4:
+            if abs(self.f_delta_pnl) >= (4.-1e-6):
                 valid_actions = list(self.actions_to_stop_when_long)
         # NOTE: I should change just this function when implementing
         # the learning agent
@@ -310,7 +306,7 @@ class BasicAgent(Agent):
             return translators.translate_to_agent(self,
                                                   s_action,
                                                   my_ordmatch,
-                                                  0.01)
+                                                  0.01)  # 1 cent inside book
         return []
 
     def _apply_policy(self, state, action, reward):
@@ -557,20 +553,20 @@ def run():
     Run the agent for a finite number of trials.
     """
     # Set up environment
-    s_fname = 'data/petr4_0725_0818_2.zip'
+    # s_fname = 'data/petr4_0725_0818_2.zip'
     # s_fname = 'data/petr4_0819_0926_2.zip'
-    # s_fname = 'data/data_0725_0926.zip'
+    s_fname = 'data/data_0725_0926.zip'
     e = Environment(s_fname=s_fname, i_idx=2)
     # create agent
     # a = e.create_agent(BasicAgent, f_min_time=2.)
     # a = e.create_agent(BasicLearningAgent, f_min_time=20.)
-    # a = e.create_agent(LearningAgent_k, f_min_time=2., f_k=0.5)
-    a = e.create_agent(LearningAgent, f_min_time=2., f_k=0.5)
+    a = e.create_agent(LearningAgent_k, f_min_time=2., f_k=0.5)
+    # a = e.create_agent(LearningAgent, f_min_time=2., f_k=0.5)
     e.set_primary_agent(a)  # specify agent to track
 
     # Now simulate it
     sim = Simulator(e, update_delay=1.00, display=False)
-    sim.run(n_trials=50)  # run for a specified number of trials
+    sim.run(n_trials=42)  # run for a specified number of trials
 
     # save the Q table of the primary agent
     save_q_table(e)

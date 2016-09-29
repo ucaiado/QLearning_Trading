@@ -300,7 +300,7 @@ class Environment(object):
         sense = self.sense(agent)
         f_pnl = state['Ask'] - state['Bid']
         f_pnl += state['Position'] * sense['midPrice']
-        # include costs (it is possible just if I was a big player)
+        # include costs
         f_pnl -= ((state['Ask'] + state['Bid']) * 0.00035)
         # measure the reward
         reward = 0.

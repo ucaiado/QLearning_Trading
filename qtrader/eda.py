@@ -213,12 +213,17 @@ def simple_counts(s_fname, s_agent):
     '''
     with open(s_fname) as fr:
         d_cumrewr = defaultdict(lambda: defaultdict(float))
+        d_pnl = defaultdict(lambda: defaultdict(float))
         d_position = defaultdict(lambda: defaultdict(int))
         d_reward = defaultdict(int)
+        d_delta_pnl = defaultdict(int)
+        d_action = defaultdict(int)
         f_reward = 0.
         f_count_step = 0
         last_reward = 0.
         i_trial = 0
+
+        # , pnl = 3.16, delta_pnl = 0.00,
 
         for idx, row in enumerate(fr):
             if row == '\n':
@@ -238,6 +243,15 @@ def simple_counts(s_fname, s_agent):
                 d_cumrewr[i_trial+1][ts_date] = f_reward + last_reward
                 f_reward += last_reward
                 f_count_step += 1.
+                if 'delta_pnl = ' in s_aux:
+                    f_val = float(s_aux.split('delta_pnl = ')[1].split(',')[0])
+                    d_delta_pnl[int(f_val)] += 1
+                if ', action = ' in s_aux:
+                    s_action = s_aux.split(', action = ')[1].split(',')[0]
+                    d_action[s_action] += 1
+                if ', pnl = ' in s_aux:
+                    s_action = s_aux.split(', pnl = ')[1].split(',')[0]
+                    d_pnl[i_trial+1][ts_date] = float(s_action)
             # store cumulative data
             elif 'Environment.reset' in s_aux:
                 if f_count_step > 0:
@@ -247,4 +261,12 @@ def simple_counts(s_fname, s_agent):
                 f_count_step = 0
                 f_reward = 0
 
-        return d_cumrewr, d_reward, d_position
+        d_summary = {}
+        d_summary['cumulative_reward'] = d_cumrewr
+        d_summary['avg_reward'] = d_reward
+        d_summary['position'] = d_position
+        d_summary['delta_pnl'] = d_delta_pnl
+        d_summary['pnl'] = d_pnl
+        d_summary['action'] = d_action
+
+        return d_summary
