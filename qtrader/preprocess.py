@@ -228,6 +228,10 @@ class LessClustersScaler(object):
         for s_key in ['OFI', 'BOOK_RATIO']:
             f_value = np.array([1. * d_data[s_key]]).reshape(1, -1)
             d_data[s_key] = float(self.d_scale[s_key].transform(f_value))
+            if d_data[s_key] > 1.:
+                d_data[s_key] = 1.
+            if d_data[s_key] < 0.:
+                d_data[s_key] = 0.
 
         # return the cluster (from 10) using kmeans
         na_val = pd.Series(d_data).values.reshape(1, -1)
