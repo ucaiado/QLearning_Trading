@@ -174,7 +174,7 @@ class ClusterScaler(object):
         self.pca = pickle.load(open('data/pca.dat', 'r'))
         self.d_scale = {}
         self.d_scale['OFI'] = pickle.load(open('data/scale_ofi.dat', 'r'))
-        self.d_scale['qBID'] = pickle.load(open('data/scale_ofi.dat', 'r'))
+        self.d_scale['qBID'] = pickle.load(open('data/scale_qbid.dat', 'r'))
         scale_aux = pickle.load(open('data/scale_bookratio.dat', 'r'))
         self.d_scale['BOOK_RATIO'] = scale_aux
         self.d_scale['LOG_RET'] = pickle.load(open('data/logret.dat', 'r'))
@@ -199,3 +199,75 @@ class ClusterScaler(object):
         na_val_pca = self.pca.transform(na_val_pca)
         # return the cluster (from 10) using kmeans
         return int(self.kmeans.predict(na_val_pca))
+
+
+class LessClustersScaler(object):
+    '''
+    Handler of all the process to scale the input space from the learner
+    '''
+    def __init__(self):
+        '''
+        Initialize a Scaler object
+        '''
+        self.kmeans = pickle.load(open('data/kmeans.dat_2', 'r'))
+        self.d_scale = {}
+        self.d_scale['OFI'] = pickle.load(open('data/scale_ofi.dat_2', 'r'))
+        scale_aux = pickle.load(open('data/scale_bookratio.dat_2', 'r'))
+        self.d_scale['BOOK_RATIO'] = scale_aux
+
+    def transform(self, d_feat):
+        '''
+        Return the cluster of the input data
+        :param d_feat: dictionary. Original Input data from one instamce
+        '''
+        # scale the features passed
+        # print d_feat  # [DEBUG]
+        d_data = {}
+        d_data['OFI'] = d_feat['OFI']
+        d_data['BOOK_RATIO'] = np.log(d_feat['BOOK_RATIO'])
+        for s_key in ['OFI', 'BOOK_RATIO']:
+            f_value = np.array([1. * d_data[s_key]]).reshape(1, -1)
+            d_data[s_key] = float(self.d_scale[s_key].transform(f_value))
+
+        # return the cluster (from 10) using kmeans
+        na_val = pd.Series(d_data).values.reshape(1, -1)
+        return int(self.kmeans.predict(na_val))
+
+
+class ZeroOneScaler(object):
+    '''
+    Handler of all the process to scale the input space from the learner
+    '''
+    def __init__(self):
+        '''
+        Initialize a Scaler object
+        '''
+        self.d_scale = {}
+        self.d_scale['OFI'] = pickle.load(open('data/scale_ofi.dat', 'r'))
+        scale_aux = pickle.load(open('data/scale_bookratio.dat', 'r'))
+        self.d_scale['BOOK_RATIO'] = scale_aux
+
+    def transform(self, d_feat):
+        '''
+        Return a list of the 0-1 representation of each the state
+        :param d_feat: dictionary. Original Input data from one instamce
+        '''
+        # scale the features passed
+        # print d_feat  # [DEBUG]
+        d_data = {}
+        d_data['OFI'] = d_feat['OFI']
+        d_data['BOOK_RATIO'] = np.log(d_feat['BOOK_RATIO'])
+        for s_key in ['OFI', 'BOOK_RATIO']:
+            f_value = np.array([1. * d_data[s_key]]).reshape(1, -1)
+            d_data[s_key] = float(self.d_scale[s_key].transform(f_value))
+        # round the numbers
+        l_rtn = [int(d_data['OFI'] * 10), int(d_data['BOOK_RATIO'] * 10)]
+        # limit the numbers
+        for idx in [0, 1]:
+            if l_rtn[idx] > 10:
+                l_rtn[idx] = 10
+            if l_rtn[idx] < 0:
+                l_rtn[idx] = 0
+
+        # return the cluster (from 10) using kmeans
+        return l_rtn

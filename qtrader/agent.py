@@ -477,6 +477,70 @@ class LearningAgent_k(BasicLearningAgent):
             return random.choice(valid_actions)
 
 
+class LearningAgent_k_Less(LearningAgent_k):
+    '''
+    A representation of an agent that learns to drive assuming that the world
+    is a non-deterministic MDP using Q-learning and adopts a probabilistic
+    approach to select actions
+    '''
+
+    def __init__(self, env, i_id, f_min_time=3600., f_gamma=0.5, f_k=0.8):
+        '''
+        Initialize a LearningAgent. Save all parameters as attributes
+        :param env: Environment object. The grid-like world
+        :*param f_gamma: float. weight of delayed versus immediate rewards
+        :*param f_k: float. How strongly should favor high Q-hat values
+        '''
+        # sets self.env = env, state = None, next_waypoint = None, and a
+        # default color
+        super(LearningAgent_k_Less, self).__init__(env=env,
+                                                   i_id=i_id,
+                                                   f_min_time=f_min_time,
+                                                   f_gamma=f_gamma,
+                                                   f_k=f_k)
+        # Initialize any additional variables here
+        self.s_agent_name = 'LearningAgent_k_Less'
+        self.nvisits_table = defaultdict(lambda: defaultdict(float))
+        self.scaler = preprocess.LessClustersScaler()
+        # print the parameter of the agent
+        # [debug]
+        if DEBUG:
+            s_rtn = 'LearningAgent_k_Less.__init__(): gamma = {}, k = {}'
+            root.debug(s_rtn.format(self.f_gamma, self.f_k))
+
+
+class LearningAgent_k_ZeroOne(LearningAgent_k):
+    '''
+    A representation of an agent that learns to drive assuming that the world
+    is a non-deterministic MDP using Q-learning and adopts a probabilistic
+    approach to select actions
+    '''
+
+    def __init__(self, env, i_id, f_min_time=3600., f_gamma=0.5, f_k=0.8):
+        '''
+        Initialize a LearningAgent. Save all parameters as attributes
+        :param env: Environment object. The grid-like world
+        :*param f_gamma: float. weight of delayed versus immediate rewards
+        :*param f_k: float. How strongly should favor high Q-hat values
+        '''
+        # sets self.env = env, state = None, next_waypoint = None, and a
+        # default color
+        super(LearningAgent_k_ZeroOne, self).__init__(env=env,
+                                                      i_id=i_id,
+                                                      f_min_time=f_min_time,
+                                                      f_gamma=f_gamma,
+                                                      f_k=f_k)
+        # Initialize any additional variables here
+        self.s_agent_name = 'LearningAgent_k_ZeroOne'
+        self.nvisits_table = defaultdict(lambda: defaultdict(float))
+        self.scaler = preprocess.ZeroOneScaler()
+        # print the parameter of the agent
+        # [debug]
+        if DEBUG:
+            s_rtn = 'LearningAgent_k_ZeroOne.__init__(): gamma = {}, k = {}'
+            root.debug(s_rtn.format(self.f_gamma, self.f_k))
+
+
 class LearningAgent(LearningAgent_k):
     '''
     A representation of an agent that learns to drive assuming that the world
@@ -553,15 +617,17 @@ def run():
     Run the agent for a finite number of trials.
     """
     # Set up environment
-    # s_fname = 'data/petr4_0725_0818_2.zip'
+    s_fname = 'data/petr4_0725_0818_2.zip'
     # s_fname = 'data/petr4_0819_0926_2.zip'
-    s_fname = 'data/data_0725_0926.zip'
+    # s_fname = 'data/data_0725_0926.zip'
     e = Environment(s_fname=s_fname, i_idx=2)
     # create agent
     # a = e.create_agent(BasicAgent, f_min_time=2.)
     # a = e.create_agent(BasicLearningAgent, f_min_time=20.)
-    a = e.create_agent(LearningAgent_k, f_min_time=2., f_k=0.5)
+    # a = e.create_agent(LearningAgent_k, f_min_time=2., f_k=0.5)
     # a = e.create_agent(LearningAgent, f_min_time=2., f_k=0.5)
+    # a = e.create_agent(LearningAgent_k_ZeroOne, f_min_time=2., f_k=0.5)
+    a = e.create_agent(LearningAgent_k_Less, f_min_time=2., f_k=0.5)
     e.set_primary_agent(a)  # specify agent to track
 
     # Now simulate it
