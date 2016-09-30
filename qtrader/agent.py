@@ -16,6 +16,7 @@ import sys
 import time
 from bintrees import FastRBTree
 from collections import defaultdict
+import numpy as np
 import pandas as pd
 import pickle
 import pprint
@@ -30,7 +31,7 @@ if DEBUG:
     s_format = '%(asctime)s;%(message)s'
     s_now = time.strftime('%c')
     s_now = s_now.replace('/', '').replace(' ', '_').replace(':', '')
-    s_file = 'log/sim_{}.log'.format(s_now)
+    s_file = 'log/train_test/sim_{}.log'.format(s_now)
     logging.basicConfig(filename=s_file, format=s_format)
     root = logging.getLogger()
     root.setLevel(logging.DEBUG)
@@ -46,22 +47,6 @@ if DEBUG:
 Begin help functions
 '''
 
-
-def save_q_table(e):
-    '''
-    Log the final Q-table of the algorithm
-    :param e: Environment object. The order book
-    '''
-    agent = e.primary_agent
-    try:
-        q_table = agent.q_table
-        # define the name of the files
-        # s_now is a global variable
-        s_fname = 'log/{}_qtable_{}.log'.format(agent.s_agent_name, s_now[4:])
-        # save data structures
-        pd.DataFrame(q_table).T.to_csv(s_fname, sep='\t')
-    except:
-        print 'No Q-table to be printed'
 
 '''
 End help functions
@@ -97,6 +82,18 @@ class BasicAgent(Agent):
         self.s_agent_name = 'BasicAgent'
         self.last_max_pnl = None
         self.f_delta_pnl = 0.  # defined at [-inf, 0)
+
+    def _freeze_policy(self):
+        '''
+        Freeze agent's policy so it will not update the qtable in simulation
+        '''
+        self.FROZEN_POLICY = True
+        s_print = '{}.freeze_policy(): Policy has been frozen !'
+        s_print = s_print.format(self.s_agent_name)
+        if DEBUG:
+            root.debug(s_print)
+        else:
+            print s_print
 
     def reset(self):
         '''
@@ -414,6 +411,30 @@ class BasicLearningAgent(BasicAgent):
             s_aux = str(self.old_state)
             self.q_table[s_aux][self.last_action] = self.last_reward
 
+    def set_qtable(self, s_fname):
+        '''
+        Set up the q-table to be used in testing simulation and freeze policy
+        :param s_fname: string. Path to the qtable to be used
+        '''
+        # freeze policy
+        self._freeze_policy()
+        # load qtable and transform in a dictionary
+        df_qtable = pd.read_csv(s_fname, sep='\t', index_col=0)
+        for s_idx, row in df_qtable.iterrows():
+            for s_key, f_val in row.iteritems():
+                if not np.isnan(f_val):
+                    if s_key == 'Unnamed: 1':
+                        s_key = None
+                    self.q_table[s_idx][s_key] = f_val
+        # log file used
+        s_print = '{}.set_qtable(): Setting up the agent to use'
+        s_print = s_print.format(self.s_agent_name)
+        s_print += ' the qtable at {}'.format(s_fname)
+        if DEBUG:
+            root.debug(s_print)
+        else:
+            print s_print
+
 
 class LearningAgent_k(BasicLearningAgent):
     '''
@@ -576,12 +597,25 @@ def run():
     # a = e.create_agent(LearningAgent, f_min_time=2., f_k=0.5)
     e.set_primary_agent(a)  # specify agent to track
 
-    # Now simulate it
-    sim = Simulator(e, update_delay=1.00, display=False)
-    sim.run(n_trials=10, n_sessions=1)  # run for a specified number of trials
+    # Training the agent
+    s_print = 'run(): Starting training session !'
+    if DEBUG:
+        root.debug(s_print)
+    else:
+        print s_print
 
-    # save the Q table of the primary agent
-    save_q_table(e)
+    # run for a specified number of trials
+    sim = Simulator(e, update_delay=1.00, display=False)
+    # sim.train(n_trials=2, n_sessions=2)
+
+    # test the agent
+    s_print = 'run(): Starting testing phase !'
+    if DEBUG:
+        root.debug(s_print)
+    else:
+        print s_print
+    # run for a specified number of trials
+    sim.in_sample_test(n_trials=2, n_sessions=2)
 
     # k tests
     # for f_k in [0.1, 0.3, 0.5, 1., 1.5, 2., 3., 5.]:

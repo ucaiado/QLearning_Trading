@@ -145,12 +145,15 @@ class Environment(object):
                                     'best_bid': False,
                                     'best_offer': False}
 
-    def reset_order_matching_idx(self):
+    def reset_order_matching_idx(self, i_idx=None):
         '''
         Set the start index file to the order matching read
+        :*param i_idx: integer. starting pont in the file list to be iterated
         '''
         self.order_matching.reset()
         self.order_matching.idx = self.initial_idx
+        if i_idx:
+            self.order_matching.idx = i_idx
         s_msg = 'Environment.reset_order_matching_idx(): New Trial will start!'
         if DEBUG:
             logging.info(s_msg)
