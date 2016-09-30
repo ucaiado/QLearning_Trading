@@ -17,6 +17,7 @@ import time
 from bintrees import FastRBTree
 from collections import defaultdict
 import pandas as pd
+import pickle
 import pprint
 import preprocess
 
@@ -49,13 +50,15 @@ Begin help functions
 def save_q_table(e):
     '''
     Log the final Q-table of the algorithm
-    :param e: Environment object. The grid-like world
+    :param e: Environment object. The order book
     '''
     agent = e.primary_agent
     try:
         q_table = agent.q_table
+        # define the name of the files
         # s_now is a global variable
         s_fname = 'log/{}_qtable_{}.log'.format(agent.s_agent_name, s_now[4:])
+        # save data structures
         pd.DataFrame(q_table).T.to_csv(s_fname, sep='\t')
     except:
         print 'No Q-table to be printed'
@@ -74,6 +77,7 @@ class BasicAgent(Agent):
     actions_to_close_when_long = [None, 'BEST_OFFER']
     actions_to_stop_when_short = [None, 'BEST_BID', 'BUY']
     actions_to_stop_when_long = [None, 'BEST_OFFER', 'SELL']
+    FROZEN_POLICY = False
 
     def __init__(self, env, i_id, f_min_time=3600.):
         '''
@@ -88,7 +92,8 @@ class BasicAgent(Agent):
         self.f_min_time = f_min_time
         self.next_time = 0.
         self.max_pos = 100.
-        self.scaler = preprocess.ClusterScaler()
+        # self.scaler = preprocess.ClusterScaler()
+        self.scaler = preprocess.LessClustersScaler()
         self.s_agent_name = 'BasicAgent'
         self.last_max_pnl = None
         self.f_delta_pnl = 0.  # defined at [-inf, 0)
@@ -165,7 +170,9 @@ class BasicAgent(Agent):
             elif s_action == 'SELL':
                 s_action = 'BEST_OFFER'
         # Learn policy based on state, action, reward
-        self._apply_policy(self.state, s_action, reward)
+        if not self.FROZEN_POLICY:
+            # does not update if it is frozen
+            self._apply_policy(self.state, s_action, reward)
         # calculate the next time that the agent will react
         self.next_time = self.env.order_matching.last_date
         self.next_time += self.f_min_time
@@ -324,6 +331,7 @@ class BasicLearningAgent(BasicAgent):
     A representation of an agent that learns using a basic implementation of
     Q-learning that is suited for deterministic Markov decision processes
     '''
+
     def __init__(self, env, i_id, f_min_time=3600., f_gamma=0.5):
         '''
         Initialize a BasicLearningAgent. Save all parameters as attributes
@@ -412,6 +420,7 @@ class LearningAgent_k(BasicLearningAgent):
     A representation of an agent that learns to trade adopting a probabilistic
     approach to select actions
     '''
+
     def __init__(self, env, i_id, f_min_time=3600., f_gamma=0.5, f_k=0.8):
         '''
         Initialize a LearningAgent_k. Save all parameters as attributes
@@ -455,6 +464,9 @@ class LearningAgent_k(BasicLearningAgent):
                         best_Action = action
         # if the agent still did not test all actions: (5. - f_count) * 0.25
         f_prob = ((self.f_k ** max_val) / ((4. - f_count) * 0.08 + cum_prob))
+        if self.FROZEN_POLICY:
+            # always take the best action recorded if the policy is frozen
+            f_prob = 1.
         # print 'PROB: {:.2f}'.format(f_prob)
         # choose the best_action just if: eps <= k**thisQhat / sum(k**Qhat)
         if (random.random() <= f_prob):
@@ -475,70 +487,6 @@ class LearningAgent_k(BasicLearningAgent):
             else:
                 print s_print
             return random.choice(valid_actions)
-
-
-class LearningAgent_k_Less(LearningAgent_k):
-    '''
-    A representation of an agent that learns to drive assuming that the world
-    is a non-deterministic MDP using Q-learning and adopts a probabilistic
-    approach to select actions
-    '''
-
-    def __init__(self, env, i_id, f_min_time=3600., f_gamma=0.5, f_k=0.8):
-        '''
-        Initialize a LearningAgent. Save all parameters as attributes
-        :param env: Environment object. The grid-like world
-        :*param f_gamma: float. weight of delayed versus immediate rewards
-        :*param f_k: float. How strongly should favor high Q-hat values
-        '''
-        # sets self.env = env, state = None, next_waypoint = None, and a
-        # default color
-        super(LearningAgent_k_Less, self).__init__(env=env,
-                                                   i_id=i_id,
-                                                   f_min_time=f_min_time,
-                                                   f_gamma=f_gamma,
-                                                   f_k=f_k)
-        # Initialize any additional variables here
-        self.s_agent_name = 'LearningAgent_k_Less'
-        self.nvisits_table = defaultdict(lambda: defaultdict(float))
-        self.scaler = preprocess.LessClustersScaler()
-        # print the parameter of the agent
-        # [debug]
-        if DEBUG:
-            s_rtn = 'LearningAgent_k_Less.__init__(): gamma = {}, k = {}'
-            root.debug(s_rtn.format(self.f_gamma, self.f_k))
-
-
-class LearningAgent_k_ZeroOne(LearningAgent_k):
-    '''
-    A representation of an agent that learns to drive assuming that the world
-    is a non-deterministic MDP using Q-learning and adopts a probabilistic
-    approach to select actions
-    '''
-
-    def __init__(self, env, i_id, f_min_time=3600., f_gamma=0.5, f_k=0.8):
-        '''
-        Initialize a LearningAgent. Save all parameters as attributes
-        :param env: Environment object. The grid-like world
-        :*param f_gamma: float. weight of delayed versus immediate rewards
-        :*param f_k: float. How strongly should favor high Q-hat values
-        '''
-        # sets self.env = env, state = None, next_waypoint = None, and a
-        # default color
-        super(LearningAgent_k_ZeroOne, self).__init__(env=env,
-                                                      i_id=i_id,
-                                                      f_min_time=f_min_time,
-                                                      f_gamma=f_gamma,
-                                                      f_k=f_k)
-        # Initialize any additional variables here
-        self.s_agent_name = 'LearningAgent_k_ZeroOne'
-        self.nvisits_table = defaultdict(lambda: defaultdict(float))
-        self.scaler = preprocess.ZeroOneScaler()
-        # print the parameter of the agent
-        # [debug]
-        if DEBUG:
-            s_rtn = 'LearningAgent_k_ZeroOne.__init__(): gamma = {}, k = {}'
-            root.debug(s_rtn.format(self.f_gamma, self.f_k))
 
 
 class LearningAgent(LearningAgent_k):
@@ -624,15 +572,13 @@ def run():
     # create agent
     # a = e.create_agent(BasicAgent, f_min_time=2.)
     # a = e.create_agent(BasicLearningAgent, f_min_time=20.)
-    # a = e.create_agent(LearningAgent_k, f_min_time=2., f_k=0.5)
+    a = e.create_agent(LearningAgent_k, f_min_time=2., f_k=0.5)
     # a = e.create_agent(LearningAgent, f_min_time=2., f_k=0.5)
-    # a = e.create_agent(LearningAgent_k_ZeroOne, f_min_time=2., f_k=0.5)
-    a = e.create_agent(LearningAgent_k_Less, f_min_time=2., f_k=0.5)
     e.set_primary_agent(a)  # specify agent to track
 
     # Now simulate it
     sim = Simulator(e, update_delay=1.00, display=False)
-    sim.run(n_trials=42)  # run for a specified number of trials
+    sim.run(n_trials=10, n_sessions=1)  # run for a specified number of trials
 
     # save the Q table of the primary agent
     save_q_table(e)

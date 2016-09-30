@@ -209,10 +209,10 @@ class LessClustersScaler(object):
         '''
         Initialize a Scaler object
         '''
-        self.kmeans = pickle.load(open('data/kmeans.dat_2', 'r'))
+        self.kmeans = pickle.load(open('data/kmeans_2.dat', 'r'))
         self.d_scale = {}
-        self.d_scale['OFI'] = pickle.load(open('data/scale_ofi.dat_2', 'r'))
-        scale_aux = pickle.load(open('data/scale_bookratio.dat_2', 'r'))
+        self.d_scale['OFI'] = pickle.load(open('data/scale_ofi_2.dat', 'r'))
+        scale_aux = pickle.load(open('data/scale_bookratio_2.dat', 'r'))
         self.d_scale['BOOK_RATIO'] = scale_aux
 
     def transform(self, d_feat):

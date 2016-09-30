@@ -46,38 +46,44 @@ class Simulator(object):
 
         self.display = display
 
-    def run(self, n_trials=1):
+    def run(self, n_trials=1, n_sessions=1):
         '''
         Run the simulation
-        :param n_trials: integer. Number of files to read
+        :param n_sessions: integer. Number of files to read
+        :param n_trials: integer. Iterations over the same files
         '''
-        n_trials = min(n_trials, self.env.order_matching.max_nfiles)
-        for trial in xrange(n_trials):
-            self.quit = False
-            # print 'Simulator.run(): Trial {}'.format(trial + 1)  # [debug]
-            self.env.reset()
-            self.current_time = 0.0
-            self.last_updated = 0.0
-            self.start_time = time.time()
-            while True:
-                try:
-                    # Update current time
-                    self.current_time = time.time() - self.start_time
-                    # Update environment
-                    f_time_step = self.current_time - self.last_updated
-                    l_msg = self.env.step()
-                    # print information to be ploted by a visualization
-                    if f_time_step >= self.update_delay:
-                        # TODO: Print out the scenario to be visualized
-                        pass
-                        self.last_updated = self.current_time
-                except StopIteration:
-                    self.quit = True
-                except KeyboardInterrupt:
-                    self.quit = True
-                finally:
-                    if self.quit or self.env.done:
-                        break
+        n_sessions = min(n_sessions, self.env.order_matching.max_nfiles)
 
-            # if self.quit:
-            #     break
+        for trial in xrange(n_trials):
+            # reset the order matching to the initial point
+            self.env.reset_order_matching_idx()
+            for i_sess in xrange(n_sessions):
+                self.quit = False
+                # [debug]
+                # print 'Simulator.run(): Trial {}'.format(trial + 1)
+                self.env.reset()
+                self.current_time = 0.0
+                self.last_updated = 0.0
+                self.start_time = time.time()
+                while True:
+                    try:
+                        # Update current time
+                        self.current_time = time.time() - self.start_time
+                        # Update environment
+                        f_time_step = self.current_time - self.last_updated
+                        l_msg = self.env.step()
+                        # print information to be ploted by a visualization
+                        if f_time_step >= self.update_delay:
+                            # TODO: Print out the scenario to be visualized
+                            pass
+                            self.last_updated = self.current_time
+                    except StopIteration:
+                        self.quit = True
+                    except KeyboardInterrupt:
+                        self.quit = True
+                    finally:
+                        if self.quit or self.env.done:
+                            break
+
+                # if self.quit:
+                #     break

@@ -58,6 +58,7 @@ class Environment(object):
         self.done = False
         self.t = 0
         self.agent_states = OrderedDict()
+        self.initial_idx = i_idx
 
         # Include Dummy agents
         self.num_dummies = 1  # no. of dummy agents
@@ -144,6 +145,18 @@ class Environment(object):
                                     'best_bid': False,
                                     'best_offer': False}
 
+    def reset_order_matching_idx(self):
+        '''
+        Set the start index file to the order matching read
+        '''
+        self.order_matching.reset()
+        self.order_matching.idx = self.initial_idx
+        s_msg = 'Environment.reset_order_matching_idx(): New Trial will start!'
+        if DEBUG:
+            logging.info(s_msg)
+        else:
+            print s_msg
+
     def reset(self):
         '''
         Reset the environment and all variables needed as well as the states
@@ -154,7 +167,7 @@ class Environment(object):
         self.order_matching.reset()
 
         # reset environment
-        s_msg = 'Environment.reset(): Trial set up to use {} file'
+        s_msg = 'Environment.reset(): Session set up to use {} file'
         s_name = self.order_matching.get_trial_identification()
         if s_name:
             if DEBUG:
@@ -209,7 +222,7 @@ class Environment(object):
             f_mid /= 2.
             s_msg = 'Environment.step(): Market closed at 16:30:00!'
             s_msg += ' MidPrice = {:0.2f}.'.format(f_mid)
-            s_msg += ' Trial aborted.\n'
+            s_msg += ' The session ended.\n'
             if DEBUG:
                 logging.info(s_msg)
             else:
