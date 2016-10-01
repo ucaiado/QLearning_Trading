@@ -606,7 +606,7 @@ def run():
 
     # run for a specified number of trials
     sim = Simulator(e, update_delay=1.00, display=False)
-    # sim.train(n_trials=2, n_sessions=2)
+    sim.train(n_trials=2, n_sessions=2)
 
     # test the agent
     s_print = 'run(): Starting testing phase !'
