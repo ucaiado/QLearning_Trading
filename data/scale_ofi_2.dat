@@ -25,7 +25,7 @@ p10
 tp11
 Rp12
 (I1
-(L1L
+(I1
 tp13
 cnumpy
 dtype
@@ -62,7 +62,7 @@ g10
 tp26
 Rp27
 (I1
-(L1L
+(I1
 tp28
 g17
 I00
@@ -79,7 +79,7 @@ g10
 tp33
 Rp34
 (I1
-(L1L
+(I1
 tp35
 g17
 I00
@@ -96,7 +96,7 @@ g10
 tp40
 Rp41
 (I1
-(L1L
+(I1
 tp42
 g17
 I00
@@ -105,7 +105,7 @@ p43
 tp44
 bsS'n_samples_seen_'
 p45
-L1303L
+I1303
 sS'min_'
 p46
 g7
@@ -116,18 +116,14 @@ g10
 tp48
 Rp49
 (I1
-(L1L
+(I1
 tp50
 g17
 I00
 S'M\xdel\x9c5U\xdf?'
 p51
 tp52
-bsS'_sklearn_version'
+bsS'copy'
 p53
-S'0.18'
-p54
-sS'copy'
-p55
 I01
 sb.

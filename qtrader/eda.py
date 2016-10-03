@@ -212,18 +212,23 @@ def simple_counts(s_fname, s_agent):
     :param s_agent: string. Name of the agent in the logfile
     '''
     with open(s_fname) as fr:
-        d_cumrewr = defaultdict(lambda: defaultdict(float))
-        d_pnl = defaultdict(lambda: defaultdict(float))
-        d_position = defaultdict(lambda: defaultdict(int))
-        d_reward = defaultdict(int)
+        d_cumrewr = {'test': defaultdict(lambda: defaultdict(float)),
+                     'train': defaultdict(lambda: defaultdict(float))}
+        d_pnl = {'test': defaultdict(lambda: defaultdict(float)),
+                 'train': defaultdict(lambda: defaultdict(float))}
+        # d_position = {'test': defaultdict(lambda: defaultdict(int)),
+        #               'train': defaultdict(lambda: defaultdict(int))}
+        d_cumrewr = {'test': defaultdict(lambda: defaultdict(float)),
+                     'train': defaultdict(lambda: defaultdict(float))}
+        d_reward = {'test': defaultdict(int),
+                    'train': defaultdict(int)}
         d_delta_pnl = defaultdict(int)
         d_action = defaultdict(int)
         f_reward = 0.
         f_count_step = 0
         last_reward = 0.
         i_trial = 0
-
-        # , pnl = 3.16, delta_pnl = 0.00,
+        s_phase = 'train'
 
         for idx, row in enumerate(fr):
             if row == '\n':
@@ -231,16 +236,17 @@ def simple_counts(s_fname, s_agent):
             s_aux = row.strip().split(';')[1]
             # extract desired information
             if '{}.update'.format(s_agent) in s_aux:
-                s_x = row.split('time = ')[1].split(' ')[1].split(',')[0]
+                # s_x = row.split('time = ')[1].split(' ')[1].split(',')[0]
+                s_x = row.split('time = ')[1].split(',')[0]
                 s_date_all = s_x
-                s_x = row.split('time = ')[1].split(' ')[1].split(',')[0][:-3]
+                s_x = s_date_all[:-3]
                 s_date = s_x
                 ts_date_all = pd.to_datetime(s_date_all)
                 ts_date = pd.to_datetime(s_date + ':00')
                 last_reward = float(s_aux.split('reward = ')[1].split(',')[0])
                 f_x = float(s_aux.split('position = ')[1].split(',')[0])
-                d_position[i_trial+1][ts_date_all] = f_x
-                d_cumrewr[i_trial+1][ts_date] = f_reward + last_reward
+                # d_position[s_phase][i_trial+1][ts_date_all] = f_x
+                d_cumrewr[s_phase][i_trial+1][ts_date] = f_reward + last_reward
                 f_reward += last_reward
                 f_count_step += 1.
                 if 'delta_pnl = ' in s_aux:
@@ -251,20 +257,23 @@ def simple_counts(s_fname, s_agent):
                     d_action[s_action] += 1
                 if ', pnl = ' in s_aux:
                     s_action = s_aux.split(', pnl = ')[1].split(',')[0]
-                    d_pnl[i_trial+1][ts_date] = float(s_action)
-            # store cumulative data
-            elif 'Environment.reset' in s_aux:
+                    d_pnl[s_phase][i_trial+1][ts_date] = float(s_action)
+            elif 'Trial Ended' in s_aux:
+                # store cumulative data
                 if f_count_step > 0:
-                    d_reward[i_trial+1] = f_reward / f_count_step
+                    d_reward[s_phase][i_trial+1] = f_reward / f_count_step
                 i_trial += 1
                 b_already_finish = False
                 f_count_step = 0
                 f_reward = 0
+            elif 'run(): Starting testing phase !' in s_aux:
+                i_trial = 0
+                s_phase = 'test'
 
         d_summary = {}
         d_summary['cumulative_reward'] = d_cumrewr
         d_summary['avg_reward'] = d_reward
-        d_summary['position'] = d_position
+        # d_summary['position'] = d_position
         d_summary['delta_pnl'] = d_delta_pnl
         d_summary['pnl'] = d_pnl
         d_summary['action'] = d_action

@@ -107,9 +107,10 @@ class Simulator(object):
                             break
                 # save the current Q-table
                 save_q_table(self.env, trial+1)
-
                 # if self.quit:
                 #     break
+            # log the end of the trial
+            self.env.log_trial()
 
     def test(self, s_qtable, n_trials=1, n_sessions=1, i_idx=None):
         '''
@@ -155,6 +156,8 @@ class Simulator(object):
                     finally:
                         if self.quit or self.env.done:
                             break
+            # log the end of the trial
+            self.env.log_trial()
 
     def in_sample_test(self, n_trials=1, n_sessions=1):
         '''

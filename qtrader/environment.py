@@ -59,6 +59,7 @@ class Environment(object):
         self.t = 0
         self.agent_states = OrderedDict()
         self.initial_idx = i_idx
+        self.count_trials = 1
 
         # Include Dummy agents
         self.num_dummies = 1  # no. of dummy agents
@@ -145,6 +146,18 @@ class Environment(object):
                                     'best_bid': False,
                                     'best_offer': False}
 
+    def log_trial(self):
+        '''
+        Log the end of current trial
+        '''
+        # log when the trial ended
+        if self.count_trials > 1:
+            s_msg = 'Environment.log_trial(): Trial Ended.\n'
+            if DEBUG:
+                logging.info(s_msg)
+            else:
+                print s_msg
+
     def reset_order_matching_idx(self, i_idx=None):
         '''
         Set the start index file to the order matching read
@@ -154,7 +167,9 @@ class Environment(object):
         self.order_matching.idx = self.initial_idx
         if i_idx:
             self.order_matching.idx = i_idx
+        # log the trial will start
         s_msg = 'Environment.reset_order_matching_idx(): New Trial will start!'
+        self.count_trials += 1
         if DEBUG:
             logging.info(s_msg)
         else:
@@ -212,7 +227,7 @@ class Environment(object):
                 b_are_there_orders = False
             if self.order_matching.my_book.book_bid.price_tree.count == 0:
                 b_are_there_orders = False
-            if self.order_matching.last_date >= (10*60**2 + 10 * 60):
+            if self.order_matching.last_date >= (10*60**2 + 30 * 60):
                 if b_are_there_orders:
                     if self.primary_agent.should_update():
                         self.update_agent_state(agent=self.primary_agent,
@@ -225,7 +240,7 @@ class Environment(object):
             f_mid /= 2.
             s_msg = 'Environment.step(): Market closed at 16:30:00!'
             s_msg += ' MidPrice = {:0.2f}.'.format(f_mid)
-            s_msg += ' The session ended.\n'
+            s_msg += ' The session ended.'
             if DEBUG:
                 logging.info(s_msg)
             else:
