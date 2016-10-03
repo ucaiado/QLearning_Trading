@@ -600,45 +600,48 @@ def run():
     # set up the simulation object
     sim = Simulator(e, update_delay=1.00, display=False)
 
-    # ==== IN-SAMPLE TEST ====
-    # Training the agent
-    s_print = 'run(): Starting training session ! In-Sample Test.'
-    if DEBUG:
-        root.debug(s_print)
-    else:
-        print s_print
-
-    # run for a specified number of trials
-    sim.train(n_trials=10, n_sessions=2)
-
-    # test the agent
-    s_print = 'run(): Starting testing phase ! In-Sample Test.'
-    if DEBUG:
-        root.debug(s_print)
-    else:
-        print s_print
-    # run for a specified number of trials
-    sim.in_sample_test(n_trials=17, n_sessions=1)
-
-    # # ==== OUT-OF-SAMPLE TEST ====
-    # # test the agent
-    # s_print = 'run(): Starting testing phase ! Out-of-Sample Test.'
+    # # ==== IN-SAMPLE TEST ====
+    # # Training the agent
+    # s_print = 'run(): Starting training session ! In-Sample Test.'
     # if DEBUG:
     #     root.debug(s_print)
     # else:
     #     print s_print
+
     # # run for a specified number of trials
-    # s_qtable = 'log/qtable/LearningAgent_k_qtable_17.log'
-    # # run that if is the basicagent
-    # sim.out_of_sample(s_qtable=s_qtable,
-    #                   n_start=3,
-    #                   n_trials=10,
-    #                   n_sessions=1)
-    # # run that otherwhise
-    # sim.out_of_sample(s_qtable=s_qtable,
-    #                   n_start=3,
-    #                   n_trials=1,
-    #                   n_sessions=1)
+    # sim.train(n_trials=10, n_sessions=2)
+
+    # # test the agent
+    # s_print = 'run(): Starting testing phase ! In-Sample Test.'
+    # if DEBUG:
+    #     root.debug(s_print)
+    # else:
+    #     print s_print
+    # # run for a specified number of trials. should have the same number of
+    # # trials and session of the training phase
+    # sim.in_sample_test(n_trials=10, n_sessions=2)
+
+    # ==== OUT-OF-SAMPLE TEST ====
+    # test the agent
+    s_print = 'run(): Starting testing phase ! Out-of-Sample Test.'
+    if DEBUG:
+        root.debug(s_print)
+    else:
+        print s_print
+    # run for a specified number of trials
+    s_qtable = 'log/qtable/LearningAgent_k_qtable_10.log'
+    if e.primary_agent.s_agent_name == 'BasicAgent':
+        # run that if is the basicagent
+        sim.out_of_sample(s_qtable=s_qtable,
+                          n_start=3,
+                          n_trials=10,
+                          n_sessions=1)
+    else:
+        # run that otherwhise
+        sim.out_of_sample(s_qtable=s_qtable,
+                          n_start=3,
+                          n_trials=1,
+                          n_sessions=1)
 
     # k tests
     # for f_k in [0.1, 0.3, 0.5, 1., 1.5, 2., 3., 5.]:
