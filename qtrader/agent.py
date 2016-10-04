@@ -48,6 +48,13 @@ Begin help functions
 '''
 
 
+class InvalidOptionException(Exception):
+    """
+    InvalidOptionException is raised by the run() function and indicate that no
+    valid test option was selected
+    """
+    pass
+
 '''
 End help functions
 '''
@@ -82,6 +89,8 @@ class BasicAgent(Agent):
         self.s_agent_name = 'BasicAgent'
         self.last_max_pnl = None
         self.f_delta_pnl = 0.  # defined at [-inf, 0)
+        self.old_state = None
+        self.last_action = None
 
     def _freeze_policy(self):
         '''
@@ -124,10 +133,6 @@ class BasicAgent(Agent):
         if not msg_env:
             if not self.should_update():
                 return None
-        # else:
-        #     print '============= begin env trade ==========='
-        #     print msg_env
-        #     print '============= end env trade ===========\n'
         # recover basic infos
         inputs = self.env.sense(self)
         state = self.env.agent_states[self]
@@ -160,7 +165,8 @@ class BasicAgent(Agent):
                     s_action2 = 'TAKE'  # take the offer
                 reward += self.env.act(self, msg)
         # NOTE: I am not sure about that, but at least makes sense... I guess
-        # apply the reward to the action that has generated the trade
+        # I should have to apply the reward to the action that has generated
+        # the trade (when my order was hit, I was in the book before)
         if s_action2 == s_action:
             if s_action == 'BUY':
                 s_action = 'BEST_BID'
@@ -320,7 +326,9 @@ class BasicAgent(Agent):
         :param action: string. the action selected at this time
         :param reward: integer. the rewards received due to the action
         '''
-        pass
+        # save current state, action
+        self.old_state = state
+        self.last_action = action
 
 
 class BasicLearningAgent(BasicAgent):
@@ -343,8 +351,6 @@ class BasicLearningAgent(BasicAgent):
         self.max_pos = 100.
         self.q_table = defaultdict(lambda: defaultdict(float))
         self.f_gamma = f_gamma
-        self.old_state = None
-        self.last_action = None
         self.last_reward = None
         self.s_agent_name = 'BasicLearningAgent'
 
@@ -396,9 +402,6 @@ class BasicLearningAgent(BasicAgent):
             l_aux = self.q_table[s_state].values()
             if len(l_aux) > 0:
                 max_Q = max(l_aux)
-            # hack to the agent have positive outcome if stop is an option
-            if self.last_action in ['BUY', 'SELL']:
-                self.last_reward = max(self.last_reward, 0.02)
             # update qtable
             gamma_f_max_Q_a_prime = self.f_gamma * max_Q
             f_new = self.last_reward + gamma_f_max_Q_a_prime
@@ -430,6 +433,10 @@ class BasicLearningAgent(BasicAgent):
                     if s_key == 'Unnamed: 1':
                         s_key = None
                     self.q_table[s_idx][s_key] = f_val
+            # fill stop actions to be desirable over any other action
+            for s_key in ['BUY', 'SELL']:
+                f_val = self.q_table[s_idx][s_key]
+                self.q_table[s_idx][s_key] = max(f_val, 0.)
         # log file used
         s_print = '{}.set_qtable(): Setting up the agent to use'
         s_print = s_print.format(self.s_agent_name)
@@ -475,20 +482,32 @@ class LearningAgent_k(BasicLearningAgent):
         f_count = 0.
         f_prob = 0.
         best_Action = random.choice(valid_actions)
+        # if the policy is frozen and the agent didnt observed the state
+        # previously, do nothing (or close out its positions)
+        if self.FROZEN_POLICY:
+            best_Action = None
+            if 'BUY' in valid_actions:
+                best_Action = 'BUY'
+            elif 'SELL' in valid_actions:
+                best_Action = 'SELL'
         # arg max Q-value choosing a action better than zero
         for action, val in self.q_table[str(t_state)].iteritems():
             # if the agent is positioned, should check just what is allowed
             if action in valid_actions:
+                # force to stop loss action be the last desired
+                if action in ['BUY', 'SELL']:
+                    val = 0.
                 # just consider action with positive rewards
                 # due to the possibility to use 0 < k < 1.
-                if val > 0.:
+                if val >= 0.:
                     f_count += 1.
                     cum_prob += self.f_k ** val
                     if val > max_val:
                         max_val = val
                         best_Action = action
-        # if the agent still did not test all actions: (6. - f_count) * 0.15
-        f_prob = ((self.f_k ** max_val) / ((6. - f_count) * 0.15 + cum_prob))
+        # if the agent still did not test all actions: (4. - f_count) * 0.15
+        f_aux = len(valid_actions) * 1.
+        f_prob = ((self.f_k ** max_val) / ((f_aux-f_count) * 0.15 + cum_prob))
         if self.FROZEN_POLICY:
             # always take the best action recorded if the policy is frozen
             f_prob = 1.
@@ -585,87 +604,106 @@ class LearningAgent(LearningAgent_k):
             self.q_table[s_aux][self.last_action] = self.last_reward
 
 
-def run():
+def run(s_option):
     """
-    Run the agent for a finite number of trials.
+    Run the agent for a finite number of trials.:
+    :param s_option: string. The type of the test
     """
+    i_idx = 15  # index of the start file to be used in simulations
+    n_trials = 10  # number of repetitions of the same sessions
+    n_sessions = 1  # number of different days traded
     # Set up environment
     s_fname = 'data/petr4_0725_0818_2.zip'
-    # s_fname = 'data/petr4_0819_0926_2.zip'
-    # s_fname = 'data/data_0725_0926.zip'
-    e = Environment(s_fname=s_fname, i_idx=1)
+    e = Environment(s_fname=s_fname, i_idx=i_idx)
     # create agent
-    a = e.create_agent(BasicAgent, f_min_time=2.)
-    # a = e.create_agent(BasicLearningAgent, f_min_time=20.)
-    # a = e.create_agent(LearningAgent_k, f_min_time=2., f_k=0.5)
+    if s_option in ['train_learner', 'test_learner', 'optimize_k',
+                    'optimize_gamma']:
+        a = e.create_agent(LearningAgent_k, f_min_time=2., f_k=0.5)
+    elif s_option == 'test_random':
+        a = e.create_agent(BasicAgent, f_min_time=2.)
+    else:
+        l_aux = ['train_learner', 'test_learner', 'test_random', 'optimize_k',
+                 'optimize_gamma']
+        s_err = 'Select an <OPTION> between: \n{}'.format(l_aux)
+        raise InvalidOptionException(s_err)
     e.set_primary_agent(a)  # specify agent to track
 
     # set up the simulation object
     sim = Simulator(e, update_delay=1.00, display=False)
 
-    # set the number of trials and sessions
-    n_trials = 8
-    n_sessions = 2
+    if 'train' in s_option:
+        # ==== IN-SAMPLE TEST ====
+        # Training the agent
+        s_print = 'run(): Starting training session ! In-Sample Test.'
+        if DEBUG:
+            root.debug(s_print)
+        else:
+            print s_print
 
-    # # ==== IN-SAMPLE TEST ====
-    # # Training the agent
-    # s_print = 'run(): Starting training session ! In-Sample Test.'
-    # if DEBUG:
-    #     root.debug(s_print)
-    # else:
-    #     print s_print
+        # run for a specified number of trials
+        sim.train(n_trials=n_trials, n_sessions=n_sessions)
 
-    # # run for a specified number of trials
-    # sim.train(n_trials=n_trials, n_sessions=n_sessions)
+        # test the agent
+        s_print = 'run(): Starting testing phase ! In-Sample Test.'
+        if DEBUG:
+            root.debug(s_print)
+        else:
+            print s_print
+        # run for a specified number of trials. should have the same number of
+        # trials and session of the training phase
+        sim.in_sample_test(n_trials=n_trials, n_sessions=n_sessions)
+    elif s_option in ['test_random', 'test_learner']:
+        # ==== OUT-OF-SAMPLE TEST ====
+        # test the agent
+        s_print = 'run(): Starting testing phase ! Out-of-Sample Test.'
+        if DEBUG:
+            root.debug(s_print)
+        else:
+            print s_print
+        # run for a specified number of trials
+        s_qtable = 'log/qtable/LearningAgent_k_qtable_{}.log'.format(n_trials)
+        if e.primary_agent.s_agent_name == 'BasicAgent':
+            # run that if is the basicagent
+            sim.out_of_sample(s_qtable=s_qtable,
+                              n_start=n_sessions+i_idx,
+                              n_trials=20,
+                              n_sessions=1)
+        else:
+            # the learning agent, when the policy is freezed, will always take
+            # the same actions. So there is no meaning on test multiple times
+            sim.out_of_sample(s_qtable=s_qtable,
+                              n_start=n_sessions+i_idx,
+                              n_trials=1,
+                              n_sessions=1)
 
-    # # test the agent
-    # s_print = 'run(): Starting testing phase ! In-Sample Test.'
-    # if DEBUG:
-    #     root.debug(s_print)
-    # else:
-    #     print s_print
-    # # run for a specified number of trials. should have the same number of
-    # # trials and session of the training phase
-    # sim.in_sample_test(n_trials=n_trials, n_sessions=n_sessions)
-
-    # ==== OUT-OF-SAMPLE TEST ====
-    # test the agent
-    s_print = 'run(): Starting testing phase ! Out-of-Sample Test.'
-    if DEBUG:
-        root.debug(s_print)
-    else:
-        print s_print
-    # run for a specified number of trials
-    s_qtable = 'log/qtable/LearningAgent_k_qtable_{}.log'.format(n_trials)
-    if e.primary_agent.s_agent_name == 'BasicAgent':
-        # run that if is the basicagent
-        sim.out_of_sample(s_qtable=s_qtable,
-                          n_start=n_sessions+1,
-                          n_trials=n_trials,
-                          n_sessions=1)
-    else:
-        # run that otherwhise
-        sim.out_of_sample(s_qtable=s_qtable,
-                          n_start=n_sessions+1,
-                          n_trials=1,
-                          n_sessions=1)
-
-    # k tests
-    # for f_k in [0.1, 0.3, 0.5, 1., 1.5, 2., 3., 5.]:
-    #     e = Environment()
-    #     a = e.create_agent(LearningAgent_k, f_k=f_k)
-    #     e.set_primary_agent(a, enforce_deadline=True)
-    #     sim = Simulator(e, update_delay=0.01, display=False)
-    #     sim.run(n_trials=100)
-    # gamma test
-    # for f_gamma in [0.1, 0.3, 0.5, 0.7, 0.9, 1.]:
-    #     e = Environment()
-    #     a = e.create_agent(LearningAgent, f_gamma=f_gamma)
-    #     e.set_primary_agent(a, enforce_deadline=True)
-    #     sim = Simulator(e, update_delay=0.01, display=False)
-    #     sim.run(n_trials=100)
+    elif s_option == 'optimize_k':
+        # k tests
+        raise NotImplementedError
+        for f_k in [0.3, 0.8, 1.3, 2.]:
+            e = Environment()
+            a = e.create_agent(LearningAgent_k, f_k=f_k)
+            e.set_primary_agent(a, enforce_deadline=True)
+            sim = Simulator(e, update_delay=0.01, display=False)
+            sim.run(n_trials=10)
+    elif s_option == 'optimize_gamma':
+        # gamma test
+        raise NotImplementedError
+        for f_gamma in [0.2, 0.5, 0.8, 1.]:
+            e = Environment()
+            a = e.create_agent(LearningAgent, f_gamma=f_gamma)
+            e.set_primary_agent(a, enforce_deadline=True)
+            sim = Simulator(e, update_delay=0.01, display=False)
+            sim.run(n_trials=10)
 
 
 if __name__ == '__main__':
     # run the code
-    run()
+    try:
+        run(sys.argv[1])
+    except IndexError:
+        s_err = '\nRun "python qtrader/agent.ty <OPTION>" to simulate'
+        s_err += ' the behavior of selected agent.\n'
+        l_aux = ['train_learner', 'test_learner', 'test_random', 'optimize_k',
+                 'optimize_gamma']
+        s_err += 'Select an <OPTION> between: {}'.format(l_aux)
+        raise InvalidOptionException(s_err)
