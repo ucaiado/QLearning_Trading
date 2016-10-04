@@ -358,7 +358,7 @@ class BasicLearningAgent(BasicAgent):
         # convert position to float (I should correct that somewhere)
         d_state['Position'] = float(d_state['Position'])
         # set a random action in case of exploring world
-        max_val = 0.
+        max_val = 0.01
         best_Action = random.choice(valid_actions)
         # arg max Q-value choosing a action better than zero
         for action, val in self.q_table[str(d_state)].iteritems():
@@ -396,6 +396,10 @@ class BasicLearningAgent(BasicAgent):
             l_aux = self.q_table[s_state].values()
             if len(l_aux) > 0:
                 max_Q = max(l_aux)
+            # hack to the agent have positive outcome if stop is an option
+            if self.last_action in ['BUY', 'SELL']:
+                self.last_reward = max(self.last_reward, 0.02)
+            # update qtable
             gamma_f_max_Q_a_prime = self.f_gamma * max_Q
             f_new = self.last_reward + gamma_f_max_Q_a_prime
             self.q_table[str(self.old_state)][self.last_action] = f_new
@@ -466,7 +470,7 @@ class LearningAgent_k(BasicLearningAgent):
         :param t_state: tuple. The inputs to be considered by the agent
         '''
         # set a random action in case of exploring world
-        max_val = 0.
+        max_val = 0.01
         cum_prob = 1.
         f_count = 0.
         f_prob = 0.
@@ -483,8 +487,8 @@ class LearningAgent_k(BasicLearningAgent):
                     if val > max_val:
                         max_val = val
                         best_Action = action
-        # if the agent still did not test all actions: (5. - f_count) * 0.25
-        f_prob = ((self.f_k ** max_val) / ((4. - f_count) * 0.08 + cum_prob))
+        # if the agent still did not test all actions: (6. - f_count) * 0.15
+        f_prob = ((self.f_k ** max_val) / ((6. - f_count) * 0.15 + cum_prob))
         if self.FROZEN_POLICY:
             # always take the best action recorded if the policy is frozen
             f_prob = 1.
@@ -591,14 +595,17 @@ def run():
     # s_fname = 'data/data_0725_0926.zip'
     e = Environment(s_fname=s_fname, i_idx=1)
     # create agent
-    # a = e.create_agent(BasicAgent, f_min_time=2.)
+    a = e.create_agent(BasicAgent, f_min_time=2.)
     # a = e.create_agent(BasicLearningAgent, f_min_time=20.)
-    a = e.create_agent(LearningAgent_k, f_min_time=2., f_k=0.5)
-    # a = e.create_agent(LearningAgent, f_min_time=2., f_k=0.5)
+    # a = e.create_agent(LearningAgent_k, f_min_time=2., f_k=0.5)
     e.set_primary_agent(a)  # specify agent to track
 
     # set up the simulation object
     sim = Simulator(e, update_delay=1.00, display=False)
+
+    # set the number of trials and sessions
+    n_trials = 8
+    n_sessions = 2
 
     # # ==== IN-SAMPLE TEST ====
     # # Training the agent
@@ -609,7 +616,7 @@ def run():
     #     print s_print
 
     # # run for a specified number of trials
-    # sim.train(n_trials=10, n_sessions=2)
+    # sim.train(n_trials=n_trials, n_sessions=n_sessions)
 
     # # test the agent
     # s_print = 'run(): Starting testing phase ! In-Sample Test.'
@@ -619,7 +626,7 @@ def run():
     #     print s_print
     # # run for a specified number of trials. should have the same number of
     # # trials and session of the training phase
-    # sim.in_sample_test(n_trials=10, n_sessions=2)
+    # sim.in_sample_test(n_trials=n_trials, n_sessions=n_sessions)
 
     # ==== OUT-OF-SAMPLE TEST ====
     # test the agent
@@ -629,17 +636,17 @@ def run():
     else:
         print s_print
     # run for a specified number of trials
-    s_qtable = 'log/qtable/LearningAgent_k_qtable_10.log'
+    s_qtable = 'log/qtable/LearningAgent_k_qtable_{}.log'.format(n_trials)
     if e.primary_agent.s_agent_name == 'BasicAgent':
         # run that if is the basicagent
         sim.out_of_sample(s_qtable=s_qtable,
-                          n_start=3,
-                          n_trials=10,
+                          n_start=n_sessions+1,
+                          n_trials=n_trials,
                           n_sessions=1)
     else:
         # run that otherwhise
         sim.out_of_sample(s_qtable=s_qtable,
-                          n_start=3,
+                          n_start=n_sessions+1,
                           n_trials=1,
                           n_sessions=1)
 
