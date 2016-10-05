@@ -121,7 +121,7 @@ def test_ofi_indicator(s_fname, f_min_time=10.):
 
 def cluster_results(reduced_data, preds, centers):
     '''
-    Visualizes the PCA-reduced cluster data in two dimensions
+    Visualizes the reduced cluster data in two dimensions
     Adds cues for cluster centers and student-selected sample data
     :param reduced_data: pandas dataframe. the dataset transformed and cleaned
     :param preds: numpy array. teh cluster classification of each datapoint
@@ -136,7 +136,8 @@ def cluster_results(reduced_data, preds, centers):
     fig, ax = plt.subplots(figsize=(10, 6))
 
     # Color map
-    cmap = sns.color_palette('cubehelix', 12)
+    # cmap = sns.color_palette('cubehelix', 12)
+    cmap = sns.color_palette('Set2', 12)
 
     # Color the points based on assigned cluster
     for i, cluster in plot_data.groupby('Cluster'):
@@ -152,7 +153,7 @@ def cluster_results(reduced_data, preds, centers):
         ax.scatter(x=c[0], y=c[1], marker='$%d$' % (i), alpha=1, s=100)
 
     # Set plot title
-    s_title = 'Cluster Learning on PCA-Reduced Data - Centroids Marked by'
+    s_title = 'Cluster Learning on Reduced Data - Centroids Marked by'
     s_title += ' Number\n'
     ax.set_title(s_title, fontsize=16)
 
