@@ -515,7 +515,8 @@ class LearningAgent_k(BasicLearningAgent):
         # choose the best_action just if: eps <= k**thisQhat / sum(k**Qhat)
         if (random.random() <= f_prob):
             s_print = '{}.choose_an_action(): '.format(self.s_agent_name)
-            s_print += 'action = explotation, k = {}'.format(self.f_k)
+            s_aux = 'action = explotation, gamma = {}, k = {}'
+            s_print += s_aux.format(self.f_gamma, self.f_k)
             s_print += ', prob: {:0.2f}'.format(f_prob)
             if DEBUG:
                 root.debug(s_print)
@@ -524,7 +525,8 @@ class LearningAgent_k(BasicLearningAgent):
             return best_Action
         else:
             s_print = '{}.choose_an_action(): '.format(self.s_agent_name)
-            s_print += 'action = exploration, k = {}'.format(self.f_k)
+            s_aux = 'action = exploration, gamma = {}, k = {}'
+            s_print += s_aux.format(self.f_gamma, self.f_k)
             s_print += ', prob: {:0.2f}'.format(f_prob)
             if DEBUG:
                 root.debug(s_print)
@@ -557,11 +559,6 @@ class LearningAgent(LearningAgent_k):
         # Initialize any additional variables here
         self.s_agent_name = 'LearningAgent'
         self.nvisits_table = defaultdict(lambda: defaultdict(float))
-        # print the parameter of the agent
-        # [debug]
-        if DEBUG:
-            s_rtn = 'LearningAgent.__init__(): gamma = {}, k = {}'
-            root.debug(s_rtn.format(self.f_gamma, self.f_k))
 
     def _apply_policy(self, state, action, reward):
         '''
@@ -609,16 +606,19 @@ def run(s_option):
     Run the agent for a finite number of trials.:
     :param s_option: string. The type of the test
     """
-    i_idx = 15  # index of the start file to be used in simulations
+    i_idx = 5  # 15  # index of the start file to be used in simulations
     n_trials = 10  # number of repetitions of the same sessions
     n_sessions = 1  # number of different days traded
     # Set up environment
-    s_fname = 'data/petr4_0725_0818_2.zip'
+    s_fname = 'data/data_0725_0926.zip'
     e = Environment(s_fname=s_fname, i_idx=i_idx)
     # create agent
     if s_option in ['train_learner', 'test_learner', 'optimize_k',
                     'optimize_gamma']:
-        a = e.create_agent(LearningAgent_k, f_min_time=2., f_k=0.5)
+        a = e.create_agent(LearningAgent_k,
+                           f_min_time=2.,
+                           f_k=0.8,
+                           f_gamma=0.5)
     elif s_option == 'test_random':
         a = e.create_agent(BasicAgent, f_min_time=2.)
     else:
@@ -677,23 +677,39 @@ def run(s_option):
                               n_sessions=1)
 
     elif s_option == 'optimize_k':
+        # test the agent
+        s_print = 'run(): Starting training session ! Optimiza_K Test.'
+        if DEBUG:
+            root.debug(s_print)
+        else:
+            print s_print
         # k tests
-        raise NotImplementedError
         for f_k in [0.3, 0.8, 1.3, 2.]:
-            e = Environment()
-            a = e.create_agent(LearningAgent_k, f_k=f_k)
-            e.set_primary_agent(a, enforce_deadline=True)
-            sim = Simulator(e, update_delay=0.01, display=False)
-            sim.run(n_trials=10)
+            e = Environment(s_fname=s_fname, i_idx=i_idx)
+            a = e.create_agent(LearningAgent_k,
+                               f_min_time=2.,
+                               f_k=f_k,
+                               f_gamma=0.5)
+            e.set_primary_agent(a)
+            sim = Simulator(e, update_delay=1.00, display=False)
+            sim.train(n_trials=5, n_sessions=1)
     elif s_option == 'optimize_gamma':
+        # test the agent
+        s_print = 'run(): Starting training session ! Optimiza_gamma Test.'
+        if DEBUG:
+            root.debug(s_print)
+        else:
+            print s_print
         # gamma test
-        raise NotImplementedError
-        for f_gamma in [0.2, 0.5, 0.8, 1.]:
-            e = Environment()
-            a = e.create_agent(LearningAgent, f_gamma=f_gamma)
-            e.set_primary_agent(a, enforce_deadline=True)
-            sim = Simulator(e, update_delay=0.01, display=False)
-            sim.run(n_trials=10)
+        for f_gamma in [0.3, 0.5, 0.7, 0.9]:
+            e = Environment(s_fname=s_fname, i_idx=i_idx)
+            a = e.create_agent(LearningAgent_k,
+                               f_min_time=2.,
+                               f_gamma=f_gamma,
+                               f_k=0.8)
+            e.set_primary_agent(a)
+            sim = Simulator(e, update_delay=1.00, display=False)
+            sim.train(n_trials=5, n_sessions=1)
 
 
 if __name__ == '__main__':
@@ -701,7 +717,7 @@ if __name__ == '__main__':
     try:
         run(sys.argv[1])
     except IndexError:
-        s_err = '\nRun "python qtrader/agent.ty <OPTION>" to simulate'
+        s_err = '\nRun "python qtrader/agent.py <OPTION>" to simulate'
         s_err += ' the behavior of selected agent.\n'
         l_aux = ['train_learner', 'test_learner', 'test_random', 'optimize_k',
                  'optimize_gamma']
