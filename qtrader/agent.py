@@ -606,7 +606,7 @@ def run(s_option):
     Run the agent for a finite number of trials.:
     :param s_option: string. The type of the test
     """
-    i_idx = 5  # 15  # index of the start file to be used in simulations
+    i_idx = 15  # 15  # index of the start file to be used in simulations
     n_trials = 10  # number of repetitions of the same sessions
     n_sessions = 1  # number of different days traded
     # Set up environment
@@ -617,8 +617,8 @@ def run(s_option):
                     'optimize_gamma']:
         a = e.create_agent(LearningAgent_k,
                            f_min_time=2.,
-                           f_k=0.8,
-                           f_gamma=0.5)
+                           f_k=0.3,
+                           f_gamma=0.7)
     elif s_option == 'test_random':
         a = e.create_agent(BasicAgent, f_min_time=2.)
     else:
