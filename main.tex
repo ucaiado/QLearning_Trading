@@ -353,13 +353,48 @@ In the figure \ref{fig:old_new_comparition}, an agent was trained using $\gamma=
 \section{Results}
 \label{sec:results}
 
-bla
+In this section, I will evaluate the final model, test its robustness and compare its performance to the benchmark established earlier.
 
 \subsection{Model Evaluation and Validation}
-bla
+One of the last questions that remain is if the model can make money in different scenarios. To test the robustness of the final model, I am going to use the same framework in very spaced days.
+
+As each round of training and testing sessions takes 20-30 minutes to complete, I will check its performance just on three different days. I have already used the file of index 15 in the last tests. Now, I am going to use the files with index 5, 25 and 35 to train new models, and use the files with index 6, 26 and 36 to perform out-of-sample tests. In the Figure \ref{fig:pnl_diff_days} we can see how the model performed in different unseen datasets.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.75\textwidth]{figures/pnl_diff_days.png}
+\caption{\label{fig:pnl_diff_days}PnL When Testing on Different Days.}
+\end{figure}
+
+The model was able to make money in two different days after being trained in the previous session to each day. The performance of the third day was pretty bad. However, even wasting a lot of money at the beginning of the day, the agent was able to recover the most of its loss at the end of the session.
+
+Looking at just to this data, the performance of the model looks very unstable and a little disapointing. In the next subsection, we will see why it is not that bad.
+
 
 \subsection{Justification}
-bla
+Lastly, I am going to compare the final model with the performance of a random agent. We are going to compare the performance of those agents in the out-of-sample test.
+
+As the learning agent follows strictly the policy learned, I will simulate the operations of this agent on the datasets tested just once. Even though I had run more trials, the return would be the same. However, I will simulate the operations of the random agent $20$ times at each dataset. As this agent can take any action at each run, the performance can be very good or very bad. So, I will compare the performance of the learning agent to the average performance of the random agent.
+
+In the figure below we can see how much money each one has made in the first dataset used in this project, from 08/16/2016. The learning agent was trained using data from 08/15/2016, the previous day.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.75\textwidth]{figures/optimal_vs_random_pnl.png}
+\caption{\label{fig:optimal_vs_random_pnl}Performance from Leaning and Random Agent}
+\end{figure}
+
+The learning agent greatly outpeforms the random agent, the choosen benchmark. Finally, I am going to perform the same test using the datasets used in the previous subsection.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.75\textwidth]{figures/optm_rand_several_days.png}
+\caption{\label{fig:optm_rand_several_days}Performance from Agents in different Days.}
+\end{figure}
+
+In the dataset with index 26 and 36, the random agent outperformed the learning agent most the time, but at the end of these days, the learning agent was able to catch up the random agent performance. In the dataset with index 6, the learning agent outperformed the random agent by a large margin. Curiously, in the worst day of the test, the random agent also performed poorly, suggesting that it wasn't a problem of my agent, but something that has happened on the market.
+
+Overall, I believe that the simulation results have shown initial success in bringing reinforcement learning techniques to build algorithmic trading strategies. Build a strategy that doesn't perform any arbitrage\footnote{Source: \url{https://en.wikipedia.org/wiki/Arbitrage}} and still never lose money is something very unlikely to happen. This agent was able to mimic the performance of an average random agent sometimes and outperforms it other times.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% CONCLUSION
