@@ -40,7 +40,7 @@ Nowadays, algo trading represents almost half of all cash equity trading in west
 
 As automated strategies are becoming increasingly popular, building an intelligent system that can trade many times a day and adapts itself to the market conditions and still consistently makes money is a subject of keen interest of any market participant.
 
-Given that it is hard to produce such strategy, in this project I will try to build an algorithm that just does better than a random agent, but learns by itself how to trade. To do so, I will feed my agent with one month of information about every trade and change in the top of the order book\footnote{Source: \url{https://goo.gl/k1dDYZ}} in the PETR4 - one of the most liquidity assets in Brazilian Stock Market - in a Reinforcement Learning Framework. Later on, I will test what it has learned in a newest dataset.
+Given that it is hard to produce such strategy, in this project I will try to build an algorithm that just does better than a random agent, but learns by itself how to trade. To do so, I will feed my agent with four days of information about every trade and change in the top of the order book\footnote{Source: \url{https://goo.gl/k1dDYZ}} in the PETR4 - one of the most liquidity assets in Brazilian Stock Market - in a Reinforcement Learning Framework. Later on, I will test what it has learned in a newest dataset.
 
 The dataset used in this project is also known as level I order book data\footnote{Source: \url{https://goo.gl/sP1viq}} and includes all trades and changes in the prices and total quantities at best Bid (those who wants to buy the stock) and Offer side (those who intends to sell the stock).
 
@@ -73,7 +73,7 @@ Given that, the metric used to measure the performance of the learner will be th
 In this section, I will explore the data set that will be used in the simulation, define and justify the inputs employed in the state representation of the algorithm, explain the reinforcement learning techniques used and provide a benchmark.
 
 \subsection{Data Exploration}
-The dataset used is composed by level I order book data from PETR4, a stock traded at BMFBovespa Stock Exchange. Includes 19 trading sessions from 07/25/2016 to 08/18/2016. I will use one day to create the scalers of the features used, that I shall explain. Then, I will use 16 days to train the model and finally, I will test the policy found in the last two days. The data was collected from Bloomberg. There are 19 files, each one has 110,000 rows on average, resulting in 2,117,603 row at total and more than 86 MB of information. In the figure \ref{tab:original_data} is the stricture of one of them:
+The dataset used is composed by level I order book data from PETR4, a stock traded at BMFBovespa Stock Exchange. Includes 19 trading sessions from 07/25/2016 to 09/26/2016. I will use one day to create the scalers of the features used, that I shall explain. Then, I will use four days to train and test the model, and after each training session, I will validate the policy found in an unseen dataset from the subsequent day. The data was collected from Bloomberg. There are 45 files, each one has 110,000 rows on average, resulting in 5,631,273 rows at total and almost  230 MB of information. In the figure \ref{tab:original_data} is the structure of one of them:
 
 \begin{table}[ht!]
 \centering
@@ -111,25 +111,17 @@ All this data will be used to create the environment where my agent will operate
 
 The environment will answer with the agent's current position and Profit and Loss (PnL) every time the agent executes a trade or has an order filled. The cost of the trade will be accounted as a penalty.
 
-As \cite{chan2001electronic} explained, Markov decision processes (MDPs) are the most common model for reinforcement learning.  The MDP model of the environment consists, among other things, of a discrete set of states $S$ and a discrete set of actions $A$ the agent can take. About the action space $A$, there are six possibles actions:
-$$a_t \in \left (None,\, buy,\, sell,\, best\_bid,\, best\_ask,\, best\_both \right)$$
-
-Where $None$ indicates that the agent shouldn't have any order in the market. $Buy$ and $Sell$ mean that the agent should execute a market order to buy or sell $100$ stocks (the size of an order will always be a hundred shares). $best\_bid$ and $best\_ask$ indicates that the agent should keep order at the best price just in the mentioned side and $best\_both$, it should have orders at the best price in both sides.
-
-The current state of the environment will be represented by a set of variables representing the events that have occurred at the last seconds and other variables describing the last condition of the order book. So, I will use the following inputs to represent the environment state:
+The agent also will be able to sense the state of the environment and include it in its own state representation. So, this intern state will be represented by a set of variables about the current situation os the market and the state of the agent, given by:
 
 \begin{itemize}
-\item $log\_return$ : float. The Log return of the stock in the last 10 seconds
 \item $qOFI$ : integer. The net order flow in the last 10 seconds
-\item $nSeconds$: integer. Seconds elapsed since the last measurements
-\item $qBid$ : Integer. The size of the current best Bid
 \item $book\_ratio$ : float. The Bid size over the Ask size
 \item $position$: integer. The current position of my agent
 \item $OrderBid$: boolean. If the agent has order at the bid side
 \item $OrderAsk$: boolean. If the agent has order at the ask side
 \end{itemize}
 
-The size of the Ask is not used because it is indirectly used in the $book\_ratio$. The $log\_return$ is defined as $r_t = \log \left(  \frac{P_t}{P_{t-1}}\right)$, where $P_t$ is the current price and $P_{t-1}$ is the previous price. Concerning the measure of the Order Flow Imbalance (OFI), there are many ways to measure it. \cite{cont2014price} argued the *order flow imbalance* is a measure of supply/demand imbalance and defines it as a sum of individual event contribution $e_n$ over time intervals $\left[ t_{k-1}, \; t_k \right]$, such that:
+Regarding the measure of the Order Flow Imbalance (OFI), there are many ways to measure it. \cite{cont2014price} argued the *order flow imbalance* is a measure of supply/demand imbalance and defines it as a sum of individual event contribution $e_n$ over time intervals $\left[ t_{k-1}, \; t_k \right]$, such that:
 $$OFI_k = \sum^{N(t_k)}_{n=N(t_{k-1})+1} e_n$$
 
 Where $N(t_k)$ and $N(t_{k-1}) + 1$ are index of the first and last event in the interval. The $e_n$ was defined by the authors as a measure of the contribution of the $n$-th event to the size of the bid and ask queues:
@@ -146,9 +138,14 @@ Where $q^{B}_{n}$ and $q^{A}_{n}$ are linked to the accumulated quantities at th
 As described by \cite{cont2014price} in a similar test, the figure \ref{fig:ofi_linear} suggests that order flow imbalance is a stronger driver of high-frequency price changes and this variable will be used to describe the current state of the order book.
 
 \subsection{Algorithms and Techniques}
-Based on \cite{cont2014price}, the algo trading might be conveniently modeled in the framework of reinforcement learning. According to \cite{du1algorithm}, this framework adjusts the parameters of an agent to maximize the expected payoff or reward generated due to its actions. Therefore, the agent learns a policy that tells him the actions it must perform to achieve its best performance. This optimal policy is exactly what we hope to find when we are building an automated trading strategy.
+Based on \cite{cont2014price}, the algo trading might be conveniently modeled in the framework of reinforcement learning. As suggested by \cite{du1algorithm}, this framework adjusts the parameters of an agent to maximize the expected payoff or reward generated due to its actions. Therefore, the agent learns a policy that tells him the actions it must perform to achieve its best performance. This optimal policy is exactly what we hope to find when we are building an automated trading strategy.
 
-So, defining a general formulation of the reinforcement learning problem based on a Markov Decision Process (MDP), as proposed by \cite{Mitchell}, the agent can perceive a set $S$ os distinct states of its environment and has a set $A$ of actions that it can perform. So, at each discrete time step $t$, the agent senses the current state $s_t$ and choose to take an action $a_t$. The environment responds by providing the agent a reward $r_t=r(s_t, a_t)$ and by producing the succeeding state $s_{t+1}=\delta(s_t, a_t)$. The functions $r$ and $\delta$ only depend on the current state and action (it is memoryless\footnote{Source: \url{https://en.wikipedia.org/wiki/Markov_process}}, are part of the environment and are not necessarily known to the agent.
+According to \cite{chan2001electronic}, Markov decision processes (MDPs) are the most common model when implementing reinforcement learning.  The MDP model of the environment consists, among other things, of a discrete set of states $S$ and a discrete set of actions taken from $A$. In this project, depending on the position of the learner(long or short), at each time step $t$ it will be allowed to choose an action $a_t$ from different subsets from the action space $A$ , that consists of six possibles actions:
+$$a_t \in \left (None,\, buy,\, sell,\, best\_bid,\, best\_ask,\, best\_both \right)$$
+
+Where $None$ indicates that the agent shouldn't have any order in the market. $Buy$ and $Sell$ means that the agent should execute a market order to buy or sell $100$ stocks (the size of an order will always be a hundred shares). This kind of action will be allowed based on a trailing stop\footnote{Source: \url{https://goo.gl/SVmVzJ}} of 4 cents. $best\_bid$ and $best\_ask$ indicate that the agent should keep order at best price just in the mentioned side and $best\_both$, it should have ordered at best price in both sides.
+
+So, at each discrete time step $t$, the agent senses the current state $s_t$ and choose to take an action $a_t$. The environment responds by providing the agent a reward $r_t=r(s_t, a_t)$ and by producing the succeeding state $s_{t+1}=\delta(s_t, a_t)$. The functions $r$ and $\delta$ only depend on the current state and action (it is memoryless\footnote{Source: \url{https://en.wikipedia.org/wiki/Markov_process}}, are part of the environment and are not necessarily known to the agent.
 
 The task of the agent is to learn a policy $\pi$ that maps each state to an action ($\pi: S \rightarrow A$), selecting its next action $a_t$ based solely on the current observed state $s_t$, that is $\pi(s_t)=a_t$. The optimal policy, or control strategy, is the one that produces the greatest possible cumulative reward over time. So, stating that:
 $$V^{\pi}(s_t)= r_t + \gamma r_{t+1} + \gamma^2 r_{t+1} + ... = \sum_{i=0}^{\infty} \gamma^{i} r_{t+i}$$
@@ -168,18 +165,18 @@ $$Q(s, \, a) = r(s, a) + \gamma V^{*}(\delta(s, a))$$
 As $\delta(s, a)$ is the state resulting from applying action $a$ to state $s$ (the successor) chosen by following the optimal policy, $V^{*}$ is the cumulative value of the immediate successor state discounted by a factor $\gamma$. Thus,  what we are trying to achieve is
 $$\pi^{*}(s) = \underset{a}{\arg \max} Q(s, \, a)$$
 
-Thus, the optimal policy can be obtained even if the agent just uses the current action $a$ and state $s$ and chooses the action that maximizes $Q(s,\, a)$. Also, it is important to notice that the function above implies that the agent can select optimal actions even when it has no knowledge of the functions $r$ and $\delta$.
+It implies that the optimal policy can be obtained even if the agent just uses the current action $a$ and state $s$ and chooses the action that maximizes $Q(s,\, a)$. Also, it is important to notice that the function above implies that the agent can select optimal actions even when it has no knowledge of the functions $r$ and $\delta$.
 
 Lastly, according to \cite{Mitchell}, there are some conditions to ensure that the reinforcement learning converges toward an optimal policy. On a deterministic MDP, the agent must select actions in a way that it visits every possible state-action pair infinitely often. This requirement can be a problem in the environment that the agent will operate.
 
 As the most inputs suggested in the last subsection was defined in an infinite space, in section \ref{sec:methodology} I will discretize those numbers before use them to train my agent, keeping the state space representation manageable, hopefully. We also will see how \cite{Mitchell} defined a reliable way to estimate training values for $Q$, given only a sequence of immediate rewards $r$.
 
 \subsection{Benchmark}
-As described before, the performance of my agent will be compared to the performance of a random agent. This random agent should select a random action from a set of valid action at each time step $t$.
+As described before, the performance of my agent will be compared to the performance of a random agent. This random agent should select a random action from a set of valid actions taken from $A$ at each time step $t$.
 
-Just like my learner, the set of action can change because the random agent is limited to hold an open position of $400$ stocks at most, on any side. When it reaches its limit, it will be allowed just to perform actions that decrease its position. So, for instance, if it already long\footnote{Source: \url{https://goo.gl/GgXJgR}} in $400$ shares, the possible moves would be $\left (None,\, sell,\, best\_ask \right)$. If it is short\footnote{Source: \url{https://goo.gl/XFR7q3}}, it just can perform $\left (None,\, buy,\, best\_bid\right)$.
+Just like my learner, the set of action can change over time depending on the open position, that is limited to $100$ stocks at most, on any side. When it reaches its limit, it will be allowed just to perform actions that decrease its position. So, for instance, if it already [long](https://goo.gl/GgXJgR) in $100$ shares, the possible moves would be $\left (None,\, sell,\, best\_ask \right)$. If it is [short](https://goo.gl/XFR7q3), it just can perform $\left (None,\, buy,\, best\_bid\right)$.
 
-The performance of the agents will be measured primarily about the average reward received by the agents (that will be optimized by the learner). Later on, I will use the policy learned to simulate the learning agent behavior in a different dataset and then I will compare the final Profit and Loss and volatility of the returns of both agents. Thus, all data analyzed will be obtained by simulation.
+The performance will be measured primarily in the money made by the agents (that will be optimized by the learner). First, I will analyze if the learning agent was able to improve its performance on the same dataset after different trials. Later on, I will use the policy learned to simulate the learning agent behavior in a different dataset and then I will compare the final Profit and Loss and volatility of the returns of both agents. All data analyzed will be obtained by simulation.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% METHODOLOGY
@@ -188,13 +185,100 @@ The performance of the agents will be measured primarily about the average rewar
 \section{Methodology}
 \label{sec:methodology}
 
-bla
+In this section, I will discretize the input space and implement an agent to learn the Q function.
 
 \subsection{Data Preprocessing}
-bla
+As mentioned before, I will implement a Markov decision processes (MDP) that requires, among other things, of a discrete set of states $S$. Apart from the input variables $position$, $OrderBid$, $OrderAsk$, the other variables are defined in an infinite domain. I am going to discretize those inputs, so my learning agent can use them in the representation of their intern state. In the Figure bellow, we can see the distribution of those variables. The data was produced using the first day of the dataset.
+
+
+\begin{figure}[ht!]
+\minipage{0.49\textwidth}
+  \includegraphics[width=\linewidth]{figures/scatter_feat_1.png}
+  \caption{\label{fig:features_one}Exploration vs Exploitation}
+\endminipage
+\minipage{0.49\textwidth}
+  \includegraphics[width=\linewidth]{figures/scatter_feat_2.png}
+  \caption{\label{fig:features_two}On Time Ratio}
+\endminipage
+\end{figure}
+
+The scale of the variables is very different, and, in the case of the $BOOK\_RATIO$, it presents a logarithmic distribution. I will apply a logarithm transformation on this variable and rescale both to lie between a given minimum and maximum value of each feature using the function MinMaxScaler\footnote{Source: \url{http://scikit-learn.org/stable/modules/preprocessing.html}} from scikit-learn. The result of the transformation can be seen in the figure below.
+
+As mentioned before, in an MDP environment the agent must visit every possible state-action pair infinitely often. If I just bucketize the variables and combine them, I will end up with a huge number of states to explore. So, to reduce the state space, I am going to group those variables using K-Means and Gaussian Mixture Model (GMM) clustering algorithm. Then I will quantify the "goodness" of the clustering results by calculating each data point's silhouette coefficient\footnote{Source: \url{https://goo.gl/FUVD50}}. The silhouette coefficient for a data point measures how similar it is to its assigned cluster from -1 (dissimilar) to 1 (similar). In the figure below, I am going to calculate the mean silhouette coefficient to K-Means and GMM using a different number of clusters. Also, I will test different covariance structures to GMM.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.75\textwidth]{figures/cluster_scores.png}
+\caption{\label{fig:scores}Silhouette Scores.}
+\end{figure}
+
+The maximum score has happened using $2$ clusters.However, I believe that the market can't be simplified that much. So, I will use the K-means with six centroids to group the variables. In the figure below we can see how the algorithm classified the data. Also, in the following table, the centroid was put in their original scales.
+
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.75\textwidth]{figures/cluster_scatter.png}
+\caption{\label{fig:clusters}Clusters Found.}
+\end{figure}
+
+\begin{table}[ht!]
+\centering
+\begin{tabular}{l|ll}
+{Cluster} &    BOOK\_RATIO &    OFI \\
+\midrule
+0 &  0.89 &  -173,662 \\
+1 &  0.91 &  281,563 \\
+2 &  0.76 &  116,727 \\
+3 &  0.85 &  -16,602 \\
+4 &  7.91 &  23,334 \\
+5 &  0.09 &  34,240 \\
+
+\end{tabular}
+\caption{\label{tab:cluster_recover}Recovering Data From Centroids}
+\end{table}
+
+Curiously, the algorithm gave more emphasis on the $BOOK\_RATIO$  when its value was very large (the bid size almost eight times greater than the ask size) or tiny (when the bid size was one tenth of the ask size). The other cluster seems mostly dominated by the $OFI$. In the next subsection, I will discuss how I have implemented the Q-learning, how I intend to perform the simulations and make some tests. *Lastly, let's serialize the objects used in clusterization to be used later. *
+
+
 
 \subsection{Implementation}
-bla
+As we have seen, learning the Q function corresponds to learning the optimal policy. According to \cite{Mohri_2012}, the optimal state-action value function $Q^{*}$ is defined for all $(s, \, a) \in S \times A$ as the expected return for taking the action $a \in A$ at the state $s \in S$, following the optimal policy. So, it can be written as \cite{Mitchell} suggested:
+
+$$V^{*}(s) = \underset{a'}{\arg \max} \, Q(s, \, a')$$
+
+Using this relationship, we can write a recursive definition of Q function, such that:
+
+$$Q(s, \, a) = r(s, a) + \gamma \, \underset{a'}{\max} \, Q(\delta(s,\, a), \, a')$$
+
+The recursive nature of the function above implies that our agent doesn't know the actual $Q$ function. It just can estimate $Q$, that we will refer as $\hat{Q}$. It will represents is hypothesis $\hat{Q}$ as a large table that attributes each pair $(s\, , \, a)$ to a value for $\hat{Q}(s,\, a)$ - the current hypothesis about the actual but unknown value $Q(s, \, a)$. I will initialize this table with zeros, but it could be filled with random numbers, according to \cite{Mitchell}. Still according to him, the agent repeatedly should observe its current state $s$ and do the following:
+
+\begin{algorithm}
+\caption{Update Q-table}\label{alg:qtable}
+\begin{algorithmic}[1]
+\Loop{ Observe the current state $s$ and:}
+  \State Choose some action $a$ and execute it
+  \State Receive the immediate reward $r = r(s, a)$
+  \State initialize the table entry $\hat{Q}(s, \, a)$ to zero if there is no entry $(s, \, a)$
+  \State Observe the new state $s' = \delta(s, \,a)$
+  \State Updates the table entry for $\hat{Q}(s, \, a)$ following:
+
+    \do $\hat{Q}(s, \, a) \leftarrow r + \gamma \, \underset{a'}{\max}\, \hat{Q}(s', \, a')$
+  \State $s \leftarrow s'$
+\EndLoop
+\end{algorithmic}
+\end{algorithm}
+
+in the simulation, failing to explore other actions that could present even higher values. \cite{Mitchell} proposed to use a probabilistic approach to select actions, assigning higher probabilities to action with high $\hat{Q}$ values, but given to every action at least a nonzero probability. So, I will implement the following relation:
+
+$$P(a_i\, | \,s ) = \frac{k ^{\hat{Q}(s, a_i)}}{\sum_j k^{\hat{Q}(s, a_j)}}$$
+
+Where $P(a_i\, | \,s )$ is the probability of selecting the action $a_i$ given the state $s$. The constant $k$ is positive and determines how strongly the selection favors action with high $\hat{Q}$ values. Let's look at the number of times the algorithm choose to explore when we vary the value of the $k$.
+
+...
+
+
+
+
 
 \subsection{Refinement}
 bla
