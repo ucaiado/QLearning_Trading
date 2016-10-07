@@ -174,7 +174,7 @@ As the most inputs suggested in the last subsection was defined in an infinite s
 \subsection{Benchmark}
 As described before, the performance of my agent will be compared to the performance of a random agent. This random agent should select a random action from a set of valid actions taken from $A$ at each time step $t$.
 
-Just like my learner, the set of action can change over time depending on the open position, that is limited to $100$ stocks at most, on any side. When it reaches its limit, it will be allowed just to perform actions that decrease its position. So, for instance, if it already [long](https://goo.gl/GgXJgR) in $100$ shares, the possible moves would be $\left (None,\, sell,\, best\_ask \right)$. If it is [short](https://goo.gl/XFR7q3), it just can perform $\left (None,\, buy,\, best\_bid\right)$.
+Just like my learner, the set of action can change over time depending on the open position, that is limited to $100$ stocks at most, on any side. When it reaches its limit, it will be allowed just to perform actions that decrease its position. So, for instance, if it already long\footnote{Source: \url{https://goo.gl/GgXJgR}} in $100$ shares, the possible moves would be $\left (None,\, sell,\, best\_ask \right)$. If it is short\footnote{Source: \url{https://goo.gl/XFR7q3}}, it just can perform $\left (None,\, buy,\, best\_bid\right)$.
 
 The performance will be measured primarily in the money made by the agents (that will be optimized by the learner). First, I will analyze if the learning agent was able to improve its performance on the same dataset after different trials. Later on, I will use the policy learned to simulate the learning agent behavior in a different dataset and then I will compare the final Profit and Loss and volatility of the returns of both agents. All data analyzed will be obtained by simulation.
 
@@ -188,7 +188,7 @@ The performance will be measured primarily in the money made by the agents (that
 In this section, I will discretize the input space and implement an agent to learn the Q function.
 
 \subsection{Data Preprocessing}
-As mentioned before, I will implement a Markov decision processes (MDP) that requires, among other things, of a discrete set of states $S$. Apart from the input variables $position$, $OrderBid$, $OrderAsk$, the other variables are defined in an infinite domain. I am going to discretize those inputs, so my learning agent can use them in the representation of their intern state. In the Figure bellow, we can see the distribution of those variables. The data was produced using the first day of the dataset.
+As mentioned before, I will implement a Markov decision processes (MDP) that requires, among other things, of a discrete set of states $S$. Apart from the input variables $position$, $OrderBid$, $OrderAsk$, the other variables are defined in an infinite domain. I am going to discretize those inputs, so my learning agent can use them in the representation of their intern state. In the Figure \ref{fig:features_one}, we can see the distribution of those variables. The data was produced using the first day of the dataset.
 
 
 \begin{figure}[ht!]
@@ -202,9 +202,9 @@ As mentioned before, I will implement a Markov decision processes (MDP) that req
 \endminipage
 \end{figure}
 
-The scale of the variables is very different, and, in the case of the $BOOK\_RATIO$, it presents a logarithmic distribution. I will apply a logarithm transformation on this variable and rescale both to lie between a given minimum and maximum value of each feature using the function MinMaxScaler\footnote{Source: \url{http://scikit-learn.org/stable/modules/preprocessing.html}} from scikit-learn. The result of the transformation can be seen in the figure below.
+The scale of the variables is very different, and, in the case of the Book Ratio, it presents a logarithmic distribution. I will apply a logarithm transformation on this variable and re-scale both to lie between a given minimum and maximum value of each feature using the function MinMaxScaler\footnote{Source: \url{http://scikit-learn.org/stable/modules/preprocessing.html}} from scikit-learn. The result of the transformation can be seen in the figure \ref{fig:features_two}.
 
-As mentioned before, in an MDP environment the agent must visit every possible state-action pair infinitely often. If I just bucketize the variables and combine them, I will end up with a huge number of states to explore. So, to reduce the state space, I am going to group those variables using K-Means and Gaussian Mixture Model (GMM) clustering algorithm. Then I will quantify the "goodness" of the clustering results by calculating each data point's silhouette coefficient\footnote{Source: \url{https://goo.gl/FUVD50}}. The silhouette coefficient for a data point measures how similar it is to its assigned cluster from -1 (dissimilar) to 1 (similar). In the figure below, I am going to calculate the mean silhouette coefficient to K-Means and GMM using a different number of clusters. Also, I will test different covariance structures to GMM.
+As mentioned before, in an MDP environment the agent must visit every possible state-action pair infinitely often. If I just bucketize the variables and combine them, I will end up with a huge number of states to explore. So, to reduce the state space, I am going to group those variables using K-Means and Gaussian Mixture Model (GMM) clustering algorithm. Then I will quantify the "goodness" of the clustering results by calculating each data point's silhouette coefficient\footnote{Source: \url{https://goo.gl/FUVD50}}. The silhouette coefficient for a data point measures how similar it is to its assigned cluster from -1 (dissimilar) to 1 (similar). In the figure \ref{fig:scores}, I am going to calculate the mean silhouette coefficient to K-Means and GMM using a different number of clusters. Also, I will test different covariance structures to GMM.
 
 \begin{figure}[ht]
 \centering
@@ -212,8 +212,7 @@ As mentioned before, in an MDP environment the agent must visit every possible s
 \caption{\label{fig:scores}Silhouette Scores.}
 \end{figure}
 
-The maximum score has happened using $2$ clusters.However, I believe that the market can't be simplified that much. So, I will use the K-means with six centroids to group the variables. In the figure below we can see how the algorithm classified the data. Also, in the following table, the centroid was put in their original scales.
-
+The maximum score has happened using two clusters. However, I believe that the market can't be simplified that much. So, I will use the K-means with six centroids to group the variables. In the figure \ref{fig:clusters} we can see how the algorithm classified the data. Also, in the table \ref{tab:cluster_recover}, the centroid was put in their original scales.
 
 \begin{figure}[ht]
 \centering
@@ -223,7 +222,7 @@ The maximum score has happened using $2$ clusters.However, I believe that the ma
 
 \begin{table}[ht!]
 \centering
-\begin{tabular}{l|ll}
+\begin{tabular}{l|rr}
 {Cluster} &    BOOK\_RATIO &    OFI \\
 \midrule
 0 &  0.89 &  -173,662 \\
@@ -237,8 +236,7 @@ The maximum score has happened using $2$ clusters.However, I believe that the ma
 \caption{\label{tab:cluster_recover}Recovering Data From Centroids}
 \end{table}
 
-Curiously, the algorithm gave more emphasis on the $BOOK\_RATIO$  when its value was very large (the bid size almost eight times greater than the ask size) or tiny (when the bid size was one tenth of the ask size). The other cluster seems mostly dominated by the $OFI$. In the next subsection, I will discuss how I have implemented the Q-learning, how I intend to perform the simulations and make some tests. *Lastly, let's serialize the objects used in clusterization to be used later. *
-
+Curiously, the algorithm gave more emphasis on the $BOOK\_RATIO$  when its value was very large (the bid size almost eight times greater than the ask size) or tiny (when the bid size was one tenth of the ask size). The other cluster seems mostly dominated by the $OFI$. In the next subsection, I will discuss how I have implemented the Q-learning, how I intend to perform the simulations and make some tests.
 
 
 \subsection{Implementation}
@@ -255,7 +253,7 @@ The recursive nature of the function above implies that our agent doesn't know t
 \begin{algorithm}
 \caption{Update Q-table}\label{alg:qtable}
 \begin{algorithmic}[1]
-\Loop{ Observe the current state $s$ and:}
+\Loop{ Observe the current state $s$ and the allowed actions $A^{*}$ and:}
   \State Choose some action $a$ and execute it
   \State Receive the immediate reward $r = r(s, a)$
   \State initialize the table entry $\hat{Q}(s, \, a)$ to zero if there is no entry $(s, \, a)$
@@ -274,11 +272,33 @@ $$P(a_i\, | \,s ) = \frac{k ^{\hat{Q}(s, a_i)}}{\sum_j k^{\hat{Q}(s, a_j)}}$$
 
 Where $P(a_i\, | \,s )$ is the probability of selecting the action $a_i$ given the state $s$. The constant $k$ is positive and determines how strongly the selection favors action with high $\hat{Q}$ values. Let's look at the number of times the algorithm choose to explore when we vary the value of the $k$.
 
-...
+Lastly, to optimize the policy, the agent will iterate over the same dataset repeately...
 
+\begin{algorithm}
+\caption{Train-Test Q-Learning Trader}\label{alg:qtrader}
+\begin{algorithmic}[1]
+\Loop{ each trial in total iterations desired:}
+  \Loop{ each observation in the session:}
+    \State Update the table $\hat{Q}$
+  \EndLoop
+  \State Save the table $\hat{Q}$ indexed by the trial ID
+\EndLoop
+\Loop{ each trial in total iterations desired:}
+  \State Load the table $\hat{Q}$ related to the current trial
+  \Loop{ each observation in the session:}
+    \Loop{ Observe the current state $s$ and the allowed actions $A^{*}$ and:}
+	  \If{$s \, \notin  \, \hat{Q}$}
+      	\State Close out open positions or do nothing
+      \Else
+        \State Choose the optimal action $a \, \in \, A^{*}$ and execute it
+      \EndIf
+    \EndLoop
+  \EndLoop
+\EndLoop
+\end{algorithmic}
+\end{algorithm}
 
-
-
+bla
 
 \subsection{Refinement}
 bla
