@@ -305,7 +305,51 @@ The agent will be allowed to take action every 2 seconds and, due to this delay,
 In the next subsection, I will try different configurations of $k$ and $\gamma$ to try to improve the performance of the learning agent over the same trial.
 
 \subsection{Refinement}
-bla
+As mentioned before, we should iterate over the same dataset and check the policy learned on the same observations until convergence. Given the time required to perform each train-test iteration, "until convergence" will be 10 repetitions. We are going to train the model on the dataset from 08/15/2016. After each iteration, we will check how the agent would perform using the policy it has just learned. The agent in the first training session will use $\gamma=0.7$ and $k=0.3$. In the figure below are the results of the first round of iterations:
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.75\textwidth]{figures/policy_tests_1.png}
+\caption{\label{fig:olicy_test_1}The PnL Curves Using each Policy Learned.}
+\end{figure}
+
+The curve Train in the charts is the PnL obtained during the training session when the agent was allowed to explore new actions randomly. The test is the PnL obtained using strictly the policy learned.
+
+Although the agent was able to profit at the end of every single round,  "Convergence" is something that I can not claim. For instance, the PnL was worst in the first round than in the first one. I believe this stability of the results is difficult to obtain in day-trading. For example, even if the agent think that it should buy before the market goes up, it doesn't depending on its will if its order is filled.
+
+We will target on improving the final PnL of the agent. However, less variability of the results is desired, especially at the beginning of the day, when the strategy didn't make any money yet. So, we also will look at the sharpe ratio\footnote{Source: \url{https://en.wikipedia.org/wiki/Sharpe_ratio}} of the first difference of the cumulated PnL produced by each configuration.
+
+First, we are going to iterate through some values for $k$ and look at its performance in the training phase at the first hours of the training session. We will use just 5 iterations here to speed up the tests.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.75\textwidth]{figures/optimize_k.png}
+\caption{\label{fig:olicy_test_1}The PnL Curves Using Different Valus of $k$.}
+\end{figure}
+
+When the agent was set to use $k=0.8$ and $k=2.0$, it achieved very similar results and Sharpe ratios. As the variable $k$ control the likelihood of the agent try new actions based on the Q value already observed, I will prefer the smallest value because it improves the chance of the agent to explore. Now, let's perform the same analysis varying only the $\gamma$:
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.75\textwidth]{figures/optimize_gamma.png}
+\caption{\label{fig:olicy_test_1}The PnL Curves Using Different Valus of $\gamma$.}
+\end{figure}
+
+As explained before, as $\gamma$ approaches one, future rewards are given greater emphasis about the immediate reward. When it is zero, only immediate rewards is considered. Despite the fact that the best parameter was $\gamma = 0.9$, I am not comfortable in giving so little attention to immediate rewards. It sounds dangerous when we talk about stock markets. So, I will choose to use $\gamma = 0.5$ arbitrarily in the next tests. In the figure below, the agent is trained using $\gamma=0.5$ and $k=0.8$.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.75\textwidth]{figures/policy_tests_2.png}
+\caption{\label{fig:olicy_test_1}The PnL Curves Using each Policy Learned.}
+\end{figure}
+
+Comparing to the last training session, the results of the curves of the training and test phase look like more similar. In the figure below, we can see this improvement when performing an out-of-sample test. In this case, the dataset from 05/16/2016 was used. We will discuss the final results in the next section.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.75\textwidth]{figures/old_new_comparition.png}
+\caption{\label{fig:olicy_test_1}PnL From The First vs. Second Configuration.}
+\end{figure}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% RESULTS

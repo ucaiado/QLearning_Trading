@@ -617,8 +617,8 @@ def run(s_option):
                     'optimize_gamma']:
         a = e.create_agent(LearningAgent_k,
                            f_min_time=2.,
-                           f_k=0.3,
-                           f_gamma=0.7)
+                           f_k=0.8,
+                           f_gamma=0.5)
     elif s_option == 'test_random':
         a = e.create_agent(BasicAgent, f_min_time=2.)
     else:
