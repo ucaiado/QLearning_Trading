@@ -376,7 +376,7 @@ Lastly, I am going to compare the final model with the performance of a random a
 
 As the learning agent follows strictly the policy learned, I will simulate the operations of this agent on the datasets tested just once. Even though I had run more trials, the return would be the same. However, I will simulate the operations of the random agent $20$ times at each dataset. As this agent can take any action at each run, the performance can be very good or very bad. So, I will compare the performance of the learning agent to the average performance of the random agent.
 
-In the figure below we can see how much money each one has made in the first dataset used in this project, from 08/16/2016. The learning agent was trained using data from 08/15/2016, the previous day.
+In the figure \ref{fig:optimal_vs_random_pnl} we can see how much money each one has made in the first dataset used in this project, from 08/16/2016. The learning agent was trained using data from 08/15/2016, the previous day.
 
 \begin{figure}[ht]
 \centering
@@ -384,12 +384,12 @@ In the figure below we can see how much money each one has made in the first dat
 \caption{\label{fig:optimal_vs_random_pnl}Performance from Leaning and Random Agent}
 \end{figure}
 
-The learning agent greatly outpeforms the random agent, the choosen benchmark. Finally, I am going to perform the same test using the datasets used in the previous subsection.
+The learning agent greatly outperforms the random agent, the chosen benchmark. Finally, in the figure \ref{fig:pnl_diff_days_compare} I am going to perform the same test using the datasets used in the previous subsection.
 
 \begin{figure}[ht]
 \centering
-\includegraphics[width=0.75\textwidth]{figures/optm_rand_several_days.png}
-\caption{\label{fig:optm_rand_several_days}Performance from Agents in different Days.}
+\includegraphics[width=0.75\textwidth]{figures/pnl_diff_days_compare.png}
+\caption{\label{fig:pnl_diff_days_compare}Performance from Agents in different Days.}
 \end{figure}
 
 In the dataset with index 26 and 36, the random agent outperformed the learning agent most the time, but at the end of these days, the learning agent was able to catch up the random agent performance. In the dataset with index 6, the learning agent outperformed the random agent by a large margin. Curiously, in the worst day of the test, the random agent also performed poorly, suggesting that it wasn't a problem of my agent, but something that has happened on the market.
@@ -408,6 +408,12 @@ In this section, ...
 \subsection{Free-Form Visualization}
 
 bla
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.75\textwidth]{figures/optm_rand_several_days.png}
+\caption{\label{fig:optm_rand_several_days}Performance from Agents in different Days.}
+\end{figure}
 
 \subsection{Reflection}
 
