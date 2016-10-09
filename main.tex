@@ -48,7 +48,7 @@ The dataset used in this project is also known as level I order book data\footno
 \subsection{Problem Statement}
 Algo trading\footnote{Source: \url{http://goo.gl/b9jAqE}} strategies usually are programs that follow a predefined set of instructions to place its orders. The primary challenge to this approach is building these rules in a way that it can consistently generate profit without being too sensitive to market conditions.
 
-Thus, the goal of this project is to develop an adaptative learning model that can learn by itself those rules and trade a particular asset using reinforcement learning framework under an environment that replays historical high-frequency data.
+Thus, the goal of this project is to develop an adaptive learning model that can learn by itself those rules and trade a particular asset using reinforcement learning framework under an environment that replays historical high-frequency data.
 
 As \cite{chan2001electronic} described, reinforcement learning can be considered as a model-free approximation of dynamic programming. The knowledge of the underlying processes is not assumed but learned from experience.
 
@@ -90,7 +90,7 @@ The dataset used is composed by level I order book data from PETR4, a stock trad
 \caption{\label{tab:original_data}Basic Structure of the Files}
 \end{table}
 
-Each file is composed of four different fields. The column $Date$ is the timestamp of the row and has a precision of seconds. $Type$ is the kind of information that the row encompasses. The type 'TRADE' relates to an actual trade that has happened. 'BID' is related to changes in the best Bid level and 'ASK', to the best Offer level. $Price$ is the current best bid or ask and $Size$ is the cumulated quantity on that price and side.
+Each file is composed of four different fields. The column $Date$ is the time-stamp of the row and has a precision of seconds. $Type$ is the kind of information that the row encompasses. The type 'TRADE' relates to an actual trade that has happened. 'BID' is related to changes in the best Bid level and 'ASK', to the best Offer level. $Price$ is the current best bid or ask and $Size$ is the accumulated quantity on that price and side.
 
 All this data will be used to create the environment where my agent will operate. This environment is an order book, where the agent will be able to insert limit orders and execute trades at the best prices. The order book (figure \ref{tab:order_book}) is represented by two binary trees, one for the Bid and other for the Ask side. As can be seen in the table below, the nodes of these trees are sorted by price (price level) in ascending order on the Bid side and descending order on the ask side. At each price level, there are other binary trees sorted by order of arrival. The first order to arrive is the first order filled when coming in a trade.
 
@@ -111,7 +111,7 @@ All this data will be used to create the environment where my agent will operate
 
 The environment will answer with the agent's current position and Profit and Loss (PnL) every time the agent executes a trade or has an order filled. The cost of the trade will be accounted as a penalty.
 
-The agent also will be able to sense the state of the environment and include it in its own state representation. So, this intern state will be represented by a set of variables about the current situation os the market and the state of the agent, given by:
+The agent also will be able to sense the state of the environment and include it in its own state representation. So, this intern state will be represented by a set of variables about the current situation of the market and the state of the agent, given by:
 
 \begin{itemize}
 \item $qOFI$ : integer. The net order flow in the last 10 seconds
@@ -127,7 +127,7 @@ $$OFI_k = \sum^{N(t_k)}_{n=N(t_{k-1})+1} e_n$$
 Where $N(t_k)$ and $N(t_{k-1}) + 1$ are index of the first and last event in the interval. The $e_n$ was defined by the authors as a measure of the contribution of the $n$-th event to the size of the bid and ask queues:
 $$e_n = \mathbbm{1}_{P_{n}^{B} \geq P_{n-1}^{B}} q^{B}_{n} - \mathbbm{1}_{P_{n}^{B} \leq P_{n-1}^{B}}  q^{B}_{n-1} - \mathbbm{1}_{P_{n}^{A} \leq P_{n-1}^{A}} q^{A}_{n} + \mathbbm{1}_{P_{n}^{A} \geq P_{n-1}^{A}}  q^{A}_{n-1}$$
 
-Where $q^{B}_{n}$ and $q^{A}_{n}$ are linked to the accumulated quantities at the best bid and ask in the time $n$. The subscript $n-1$ is related to the last observation. $\mathbbm{1}$ is an indicator\footnote{Source: \url{https://en.wikipedia.org/wiki/Indicator_function}} function. In the figure below is ploted the 10-second log-return of PETR4 against the contemporaneous OFI.
+Where $q^{B}_{n}$ and $q^{A}_{n}$ are linked to the accumulated quantities at the best bid and ask in the time $n$. The subscript $n-1$ is related to the last observation. $\mathbbm{1}$ is an indicator\footnote{Source: \url{https://en.wikipedia.org/wiki/Indicator_function}} function. In the figure below is plotted the 10-second log-return of PETR4 against the contemporaneous OFI.
 
 \begin{figure}[ht!]
 \centering
@@ -319,7 +319,7 @@ Although the agent was able to profit at the end of every single round,  "Conver
 
 We will target on improving the final PnL of the agent. However, less variability of the results is desired, especially at the beginning of the day, when the strategy didn't make any money yet. So, we also will look at the Sharpe ratio\footnote{Source: \url{https://en.wikipedia.org/wiki/Sharpe_ratio}} of the first difference of the accumulated PnL produced by each configuration.
 
-First, we are going to iterate through some values for $k$ and look at its performance in the training phase at the first hours of the training session. We alos will use just 5 iterations here to speed up the tests.
+First, we are going to iterate through some values for $k$ and look at its performance in the training phase at the first hours of the training session. We also will use just 5 iterations here to speed up the tests.
 
 \begin{figure}[ht]
 \centering
@@ -368,7 +368,7 @@ As each round of training and testing sessions takes 20-30 minutes to complete, 
 
 The model was able to make money in two different days after being trained in the previous session to each day. The performance of the third day was pretty bad. However, even wasting a lot of money at the beginning of the day, the agent was able to recover the most of its loss at the end of the session.
 
-Looking at just to this data, the performance of the model looks very unstable and a little disapointing. In the next subsection, we will see why it is not that bad.
+Looking at just to this data, the performance of the model looks very unstable and a little disappointing. In the next subsection, we will see why it is not that bad.
 
 
 \subsection{Justification}
@@ -394,7 +394,7 @@ The learning agent greatly outperforms the random agent, the chosen benchmark. F
 
 In the dataset with index 26 and 36, the random agent outperformed the learning agent most the time, but at the end of these days, the learning agent was able to catch up the random agent performance. In the dataset with index 6, the learning agent outperformed the random agent by a large margin. Curiously, in the worst day of the test, the random agent also performed poorly, suggesting that it wasn't a problem of my agent, but something that has happened on the market.
 
-I believe these results are encoraging because they suggested that using the same learning framework on different days we can successfully find practical solutions that adapt well to new circumstances.
+I believe these results are encouraging because they suggested that using the same learning framework on different days we can successfully find practical solutions that adapt well to new circumstances.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% CONCLUSION
@@ -419,7 +419,7 @@ The chart above shows the accumulated return in four different days generated by
 
 To find the optimal policy we have used Q-Learning, a model-free approach to reinforcement learning. We trained the agent by simulating several runs on the same dataset, allowing the agent to explore the results of different actions on the same environment. So, we have back-tested the policy learned on the same dataset and found out that the policy learned not always converge to a better one. We noticed that this non-convergence could be related to the nature of our problem.
 
-So, we refined the model testing different configurations of the model parameters and compare the PnL of the new policy to the old one backtesting them against a different dataset. Finally, after we selected the best parameters, we trained the model in different days and tested against the subsequent sessions.
+So, we refined the model testing different configurations of the model parameters and compare the PnL of the new policy to the old one back testing them against a different dataset. Finally, after we selected the best parameters, we trained the model in different days and tested against the subsequent sessions.
 
 We compared these results to the returns of a random agent and concluded that our model was significantly better during the period of the tests.
 
