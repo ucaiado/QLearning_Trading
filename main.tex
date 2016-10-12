@@ -58,6 +58,12 @@ The agent also should receive a reward or a penalty at each time step if it is a
 
 Based on the rewards and penalties it gets, the agent should learn an optimal policy for trade this particular stock, maximizing the profit it receives from its actions and resulting positions.
 
+This project starts with an overview of the dataset and shows how the environment state will be represented in Section 2. The same section also dives in the reinforcement learning framework and defines the benchmark used at the end of the project. 
+
+Section 3 discretizes the environment states by transforming its variables and clustering them into six groups. Also describes the implementation of the model and the process of improvement made upon the algorithm used.
+
+Section 4 presents the final model and compares statistically its performance to the benchmark chosen. Section 5 concludes the project with some closing remarks and possible improvements.
+
 \subsection{Metrics}
 In 1988, the Wall Street Journal created a Dartboard Contest\footnote{Source: \url{http://www.automaticfinances.com/monkey-stock-picking/}}, where Journal staffers threw darts at a stock table to select their assets, while investment experts picked their own stocks. After six months, they compared the results of the two methods. After adjusting the results to risk level, they found out that the pros barely have beaten the random pickers.
 
@@ -92,7 +98,7 @@ The dataset used is composed by level I order book data from PETR4, a stock trad
 
 Each file is composed of four different fields. The column $Date$ is the time-stamp of the row and has a precision of seconds. $Type$ is the kind of information that the row encompasses. The type 'TRADE' relates to an actual trade that has happened. 'BID' is related to changes in the best Bid level and 'ASK', to the best Offer level. $Price$ is the current best bid or ask and $Size$ is the accumulated quantity on that price and side.
 
-All this data will be used to create the environment where my agent will operate. This environment is an order book, where the agent will be able to insert limit orders and execute trades at the best prices. The order book (figure \ref{tab:order_book}) is represented by two binary trees, one for the Bid and other for the Ask side. As can be seen in the table below, the nodes of these trees are sorted by price (price level) in ascending order on the Bid side and descending order on the ask side. At each price level, there is another binary tree composed of the orders placed by the agents which are sorted by time of arrival. The first order to arrive is the first order filled when coming in a new trade.
+All this data will be used to create the environment where my agent will operate. This environment is an order book, where the agent will be able to insert limit orders and execute trades at the best prices. The order book (table \ref{tab:order_book}) is represented by two binary trees, one for the Bid and other for the Ask side. As can be seen in the table below, the nodes of these trees are sorted by price (price level) in ascending order on the Bid side and descending order on the ask side. At each price level, there is another binary tree composed of the orders placed by the agents which are sorted by time of arrival. The first order to arrive is the first order filled when coming in a new trade.
 
 \begin{table}[ht!]
 \centering
