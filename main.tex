@@ -55,9 +55,11 @@ As \cite{chan2001electronic} described, reinforcement learning can be considered
 This project starts with an overview of the dataset and shows how the environment states will be represented in Section 2. The same section also dives in the reinforcement learning framework and defines the benchmark used at the end of the project. Section 3 discretizes the environment states by transforming its variables and clustering them into six groups. Also describes the implementation of the model and the environments, as well as and the process of improvement made upon the algorithm used. Section 4 presents the final model and compares statistically its performance to the benchmark chosen. Section 5 concludes the project with some closing remarks and possible improvements.
 
 \subsection{Metrics}
-In 1988, the Wall Street Journal created a Dartboard Contest\footnote{Source: \url{http://www.automaticfinances.com/monkey-stock-picking/}}, where Journal staffers threw darts at a stock table to select their assets, while investment experts picked their own stocks. After six months, they compared the results of the two methods. After adjusting the results to risk level, they found out that the pros barely have beaten the random pickers.
+Different metrics are used to support the decisions made throughout the project. We use the mean Silhouette Coefficient\footnote{Source: \url{https://goo.gl/3MmROJ}} of all samples to justify the clustering method chosen to reduce the state space representation of the environment. As exposed in the scikit-learn documentation, this coefficient is composed by the mean intra-cluster distance ($a$) and the mean nearest-cluster distance ($b$) for each sample. The score for a single cluster is given by $s = \frac{b-a}{\max{a, \, b}}$.This scores are so average down to all samples and varying between the best one ($+ 1$) and the worst case ($-1$).
 
-Given that, the metric used to measure the performance of the learner will be the amount of money made by a random agent. So, my goal will be to outperform this agent, that should just produce some random action from a set of allowed actions at each time $t$. In the next section, I will detail the behavior of this agent.
+Then, we use sharpe ratio\footnote{Source: \url{https://en.wikipedia.org/wiki/Sharpe_ratio}} to help us understanding the performance impact of different values to the model parameters. The Sharpe is measure upon the first difference ($\Delta r$) of the accumulated PnL curve of the model. So, the first difference is defined as $\Delta r = PnL_t - PnL_{t-1}$.
+
+Finally, as we shall justify latter, the performance of my agent will be compared to the performance of a random agent. These performances will be measured primarily of Reais made (the Brazilian currency) by the agents. To compared the final PnL of both agents in the simulations, we will perform a one-sided Welch's unequal variances t-test\footnote{Source: \url{https://goo.gl/Je2ZLP}} test for the null hypothesis that the learning agent has the expected PnL greater than the random agent. In the next section, I will detail the behavior of learning agent.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% ANALYSIS
@@ -107,15 +109,23 @@ All this data will be used to create the environment where my agent will operate
 
 The environment will answer with the agent's current position and Profit and Loss (PnL) every time the agent executes a trade or has an order filled. The cost of the trade will be accounted as a penalty.
 
-The agent also will be able to sense the state of the environment every two seconds and include it in its own state representation. So, this intern state will be represented by a set of variables about the current situation of the market and the state of the agent, given by:
+The agent also will be able to sense the state of the environment every two seconds and include it in its own state representation. So, this intern state will be represented by a set of variables about the current situation of the market and the state of the agent, given by the table \ref{tab:var_description}.
 
-\begin{itemize}
-\item $qOFI$ : integer. The net order flow in the last 10 seconds
-\item $book\_ratio$ : float. The Bid size over the Ask size
-\item $position$: integer. The current position of my agent
-\item $OrderBid$: boolean. If the agent has order at the bid side
-\item $OrderAsk$: boolean. If the agent has order at the ask side
-\end{itemize}
+\begin{table}[ht!]
+\centering
+\begin{tabular}{lrr}
+{Name} &                Type &   Description \\
+\midrule
+$qOFI$ & integer &  The net order flow in the last 10 seconds \\
+$book\_ratio$ & float &    The Bid size over the Ask size \\
+$position$ & integer &    The current position of my agent \\
+$OrderBid$ & boolean &    If the agent has order at the bid side \\
+$OrderAsk$ & boolean &    If the agent has order at the ask side \\
+
+\end{tabular}
+\caption{\label{tab:var_description}Variable Description}
+\end{table}
+
 
 Regarding the measure of the Order Flow Imbalance (OFI), there are many ways to measure it. \cite{cont2014price} argued the \textit{order flow imbalance} is a measure of supply/demand imbalance and defines it as a sum of individual event contribution $e_n$ over time intervals $\left[ t_{k-1}, \; t_k \right]$, such that:
 $$OFI_k = \sum^{N(t_k)}_{n=N(t_{k-1})+1} e_n$$
@@ -123,7 +133,7 @@ $$OFI_k = \sum^{N(t_k)}_{n=N(t_{k-1})+1} e_n$$
 Where $N(t_k)$ and $N(t_{k-1}) + 1$ are index of the first and last event in the interval. The $e_n$ was defined by the authors as a measure of the contribution of the $n$-th event to the size of the bid and ask queues:
 $$e_n = \mathbbm{1}_{P_{n}^{B} \geq P_{n-1}^{B}} q^{B}_{n} - \mathbbm{1}_{P_{n}^{B} \leq P_{n-1}^{B}}  q^{B}_{n-1} - \mathbbm{1}_{P_{n}^{A} \leq P_{n-1}^{A}} q^{A}_{n} + \mathbbm{1}_{P_{n}^{A} \geq P_{n-1}^{A}}  q^{A}_{n-1}$$
 
-Where $q^{B}_{n}$ and $q^{A}_{n}$ are linked to the accumulated quantities at the best bid and ask in the time $n$. The subscript $n-1$ is related to the last observation. $\mathbbm{1}$ is an indicator\footnote{Source: \url{https://en.wikipedia.org/wiki/Indicator_function}} function. In the figure below is plotted the 10-second log-return of PETR4 against the contemporaneous OFI.
+Where $q^{B}_{n}$ and $q^{A}_{n}$ are linked to the accumulated quantities at the best bid and ask in the time $n$. The subscript $n-1$ is related to the last observation. $\mathbbm{1}$ is an indicator\footnote{Source: \url{https://en.wikipedia.org/wiki/Indicator_function}} function. In the figure below is plotted the 10-second log-return of PETR4 against the contemporaneous OFI.  Log-return\footnote{Source: \url{https://quantivity.wordpress.com/2011/02/21/why-log-returns/}} is defined as $\ln{r_t} = \ln{\frac{P_t}{P_{t-1}}}$, where $P_t$ is the current price of PETR4 and $P_{t-1}$ is the previous one.
 
 \begin{figure}[ht!]
 \centering
@@ -168,11 +178,15 @@ Lastly, according to \cite{Mitchell}, there are some conditions to ensure that t
 As the most inputs suggested in the last subsection was defined in an infinite space, in section \ref{sec:methodology} I will discretize those numbers before use them to train my agent, keeping the state space representation manageable, hopefully. We also will see how \cite{Mitchell} defined a reliable way to estimate training values for $Q$, given only a sequence of immediate rewards $r$.
 
 \subsection{Benchmark}
-As described before, the performance of my agent will be compared to the performance of a random agent. This random agent should select a random action from a set of valid actions taken from $A$ at each time step $t$.
+In 1988, the Wall Street Journal created a Dartboard Contest\footnote{Source: \url{http://www.automaticfinances.com/monkey-stock-picking/}}, where Journal staffers threw darts at a stock table to select their assets, while investment experts picked their own stocks. After six months, they compared the results of the two methods. After adjusting the results to risk level, they found out that the pros barely have beaten the random pickers.
+
+Given that, the metric used to measure the performance of the learner will be the amount of money made by a random agent. So, my goal will be to outperform this agent, that should just produce some random action from a set of allowed actions taken from $A$ at each time step $t$.
 
 Just like my learner, the set of action can change over time depending on the agent's open position, that is limited to $100$ stocks at most, on any side. When it reaches its limit, it will be allowed just to perform actions that decrease its position. So, for instance, if it already long\footnote{Source: \url{https://goo.gl/GgXJgR}} in $100$ shares, the possible moves would be $\left (None,\, sell,\, best\_ask \right)$. If it is short\footnote{Source: \url{https://goo.gl/XFR7q3}}, it just can perform $\left (None,\, buy,\, best\_bid\right)$.
 
 The performance will be measured primarily in the money made by the agents (that will be optimized by the learner). First, I will analyze if the learning agent was able to improve its performance on the same dataset after different trials. Later on, I will use the policy learned to simulate the learning agent behavior in a different dataset and then I will compare the final Profit and Loss and volatility of the returns of both agents. All data analyzed will be obtained by simulation.
+
+As a last benchmark...
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% METHODOLOGY
@@ -198,7 +212,7 @@ As mentioned before, I will implement a Markov decision processes (MDP) that req
 \endminipage
 \end{figure}
 
-The scale of the variables is very different, and, in the case of the Book Ratio, it presents a logarithmic distribution. I will apply a logarithm transformation on this variable and re-scale both to lie between a given minimum and maximum value of each feature using the function MinMaxScaler\footnote{Source: \url{http://scikit-learn.org/stable/modules/preprocessing.html}} from scikit-learn. The result of the transformation can be seen in the figure \ref{fig:features_two}.
+The scale of the variables is very different, and, in the case of the Book Ratio, it presents a logarithmic distribution. I will apply a logarithm transformation on this variable and re-scale both to lie between a given minimum and maximum value of each feature using the function MinMaxScaler\footnote{Source: \url{http://scikit-learn.org/stable/modules/preprocessing.html}} from scikit-learn. So, both variable will be scaled to lie between $0$ and $1$ by applying the formula $z_{i} =\frac{x_i - \min{X}}{\max{X} - \min{X}}$. Where $z$ is the transformed variable, $x_i$ is the variable to be transformed and $X$ is a vector with all $x$ that will be transformed. The result of the transformation can be seen in the figure \ref{fig:features_two}.
 
 As mentioned before, in an MDP environment the agent must visit every possible state-action pair infinitely often. If I just bucketize the variables and combine them, I will end up with a huge number of states to explore. So, to reduce the state space, I am going to group those variables using K-Means and Gaussian Mixture Model (GMM) clustering algorithm. Then I will quantify the "goodness" of the clustering results by calculating each data point's silhouette coefficient\footnote{Source: \url{https://goo.gl/FUVD50}}. The silhouette coefficient for a data point measures how similar it is to its assigned cluster and it varies from -1 (dissimilar) to 1 (similar). In the figure \ref{fig:scores}, I am going to calculate the mean silhouette coefficient to K-Means and GMM using a different number of clusters. Also, I will test different covariance structures to GMM.
 
@@ -297,6 +311,8 @@ Ideally, to optimize the policy found, the agent should iterate over the same da
 Each training session will include data from the largest part of a trading session, starting at 10:30 and closing at 16:30. Also, the agent will be allowed to hold a position of just 100 shares at maximum (long or short). When the training session is over, all positions from the learner will be closed out so the agent always will start a new session without carrying positions.
 
 The agent will be allowed to take action every 2 seconds and, due to this delay, every time it decides to insert limit orders, it will place it 1 cent worst than the best price. So, if the best bid is $12.00$ and the best ask is $12.02$, if the agent chooses the action $BEST\_BOTH$, it should include a buy order at $11.99$ and a sell order at $12.03$. It will be allowed to cancel these orders after 2 seconds. However, if these orders are filled in the mean time, the environment will inform the agent so it can update its current position. Even though, it just will take new actions after passed those 2 seconds.
+
+One of the biggest complication of the approach proposed in this project was to find out a reasonable representation of the environment state that wasn't too big to visit each state-action pair sufficiently often but was still useful in the learning process. 
 
 In the next subsection, I will try different configurations of $k$ and $\gamma$ to try to improve the performance of the learning agent over the same trial.
 
