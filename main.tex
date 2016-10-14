@@ -59,7 +59,7 @@ Different metrics are used to support the decisions made throughout the project.
 
 Then, we use sharpe ratio\footnote{Source: \url{https://en.wikipedia.org/wiki/Sharpe_ratio}} to help us understanding the performance impact of different values to the model parameters. The Sharpe is measure upon the first difference ($\Delta r$) of the accumulated PnL curve of the model. So, the first difference is defined as $\Delta r = PnL_t - PnL_{t-1}$.
 
-Finally, as we shall justify latter, the performance of my agent will be compared to the performance of a random agent. These performances will be measured primarily of Reais made (the Brazilian currency) by the agents. To compared the final PnL of both agents in the simulations, we will perform a one-sided Welch's unequal variances t-test\footnote{Source: \url{https://goo.gl/Je2ZLP}} test for the null hypothesis that the learning agent has the expected PnL greater than the random agent. In the next section, I will detail the behavior of learning agent.
+Finally, as we shall justify latter, the performance of my agent will be compared to the performance of a random agent. These performances will be measured primarily of Reais made (the Brazilian currency) by the agents. To compared the final PnL of both agents in the simulations, we will perform a one-sided Welch's unequal variances t-test\footnote{Source: \url{https://goo.gl/Je2ZLP}} test for the null hypothesis that the learning agent has the expected PnL greater than the random agent. As the implementation of the t-test in the scipy\footnote{Source: \url{https://goo.gl/gs222c}} assumes a two-sided t-test, to perform the one-sided test, we will divide the p-value by $2$ to compare to a critical value of $0.05$ and requires that the t-value is greater than zero. In the next section, I will detail the behavior of learning agent.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% ANALYSIS
@@ -116,11 +116,11 @@ The agent also will be able to sense the state of the environment every two seco
 \begin{tabular}{lrr}
 {Name} &                Type &   Description \\
 \midrule
-$qOFI$ & integer &  The net order flow in the last 10 seconds \\
-$book\_ratio$ & float &    The Bid size over the Ask size \\
-$position$ & integer &    The current position of my agent \\
-$OrderBid$ & boolean &    If the agent has order at the bid side \\
-$OrderAsk$ & boolean &    If the agent has order at the ask side \\
+$qOFI$ & integer &  Net order flow in the last 10 seconds \\
+$book\_ratio$ & float &    Bid size over the Ask size \\
+$position$ & integer &    Current position of my agent \\
+$OrderBid$ & boolean &    The agent has order at the bid side? \\
+$OrderAsk$ & boolean &    The agent has order at the ask side? \\
 
 \end{tabular}
 \caption{\label{tab:var_description}Variable Description}
@@ -184,9 +184,9 @@ Given that, the metric used to measure the performance of the learner will be th
 
 Just like my learner, the set of action can change over time depending on the agent's open position, that is limited to $100$ stocks at most, on any side. When it reaches its limit, it will be allowed just to perform actions that decrease its position. So, for instance, if it already long\footnote{Source: \url{https://goo.gl/GgXJgR}} in $100$ shares, the possible moves would be $\left (None,\, sell,\, best\_ask \right)$. If it is short\footnote{Source: \url{https://goo.gl/XFR7q3}}, it just can perform $\left (None,\, buy,\, best\_bid\right)$.
 
-The performance will be measured primarily in the money made by the agents (that will be optimized by the learner). First, I will analyze if the learning agent was able to improve its performance on the same dataset after different trials. Later on, I will use the policy learned to simulate the learning agent behavior in a different dataset and then I will compare the final Profit and Loss and volatility of the returns of both agents. All data analyzed will be obtained by simulation.
+The performance will be measured primarily in the money made by the agents (that will be optimized by the learner). First, I will analyze if the learning agent was able to improve its performance on the same dataset after different trials. Later on, I will use the policy learned to simulate the learning agent behavior in a different dataset and then I will compare the final Profit and Loss of both agents. All data analyzed will be obtained by simulation.
 
-As a last benchmark...
+As the last reference, in the final section, we will compare the total return of the learner to a strategy of buy-and-hold in BOVA11. It is an ETF\footnote{Source: \url{https://en.wikipedia.org/wiki/Exchange-traded_fund}} that can be used as a proxy to the Bovespa Index\footnote{Source: \url{https://goo.gl/TsuUVH}}, the Brazilian Stock Exchange Index. We will use that to check if we are consistently beating the market and not just being profitable, as the Udacity reviewer noticed.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% METHODOLOGY
