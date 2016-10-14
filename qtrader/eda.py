@@ -12,6 +12,8 @@ from collections import defaultdict
 import csv
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.dates as dates
+from matplotlib import ticker as mticker
 import pandas as pd
 import seaborn as sns
 import zipfile
@@ -380,3 +382,84 @@ def plot_train_test_sim(d_rtn):
     f.tight_layout()
     s_title = 'Cumulative PnL from LearningAgent_k\n'
     f.suptitle(s_title, fontsize=16, y=1.03)
+
+
+def plot_cents_changed(archive, archive2):
+    '''
+    Plot price changes from some of the files passed
+    :param archive: Zipfile object. files holder from PETR4
+    :param archive2: Zipfile object. files holder from BOVA11
+    '''
+    l_fnames = archive.infolist()
+    l_fnames2 = archive2.infolist()
+    # load data
+    df_prices = pd.read_csv(archive.open(l_fnames[6]),
+                            index_col=0,
+                            parse_dates=['Date'])
+    df_prices = df_prices[df_prices.Type == 'TRADE']
+    for idx in [16, 26, 36]:
+        df_aux = pd.read_csv(archive.open(l_fnames[idx]),
+                             index_col=0,
+                             parse_dates=['Date'])
+        df_aux = df_aux[df_aux.Type == 'TRADE']
+        df_prices = pd.concat([df_prices, df_aux], ignore_index=True)
+    df_prices.index = df_prices.Date
+    quotes = df_prices.Price.resample('5min').agg({'OPEN': 'first',
+                                                   'HIGH': 'max',
+                                                   'LOW': 'min',
+                                                   'CLOSE': 'last'})
+    quotes.dropna(inplace=True)
+    # load data from BOVA11
+    df_prices2 = pd.read_csv(archive2.open(l_fnames2[0]),
+                             sep='\t',
+                             index_col=0,
+                             parse_dates=['DATE'],
+                             dayfirst=True,
+                             decimal=',')
+    quotes2 = df_prices2.PRICE.resample('5min').agg({'OPEN': 'first',
+                                                     'HIGH': 'max',
+                                                     'LOW': 'min',
+                                                     'CLOSE': 'last'})
+    quotes2.dropna(inplace=True)
+    # filer data
+    na_hour = np.array([x.hour*60 + x.minute for x in quotes.index])
+    quotes = quotes[(na_hour >= (10 * 60 + 30)) & (na_hour <= (16 * 60 + 30))]
+    na_days = np.array([x.day for x in quotes.index])
+    quotes2 = quotes2.ix[quotes.index, :]
+    quotes2.fillna(method='ffill', inplace=True)
+    # plot price changes in cents
+    fig, na_ax = plt.subplots(1, 4, sharey=True, figsize=(11, 6))
+    na_ax = na_ax.ravel()
+    na_unique = np.unique(na_days)
+    l_idx = [6, 16, 26, 36]
+    xfmt = dates.DateFormatter('%H:%M')
+    l_last = []
+    for idx, ax in enumerate(na_ax):
+        df_plot = quotes[na_days == na_unique[idx]]
+
+        df_plot2 = quotes2[na_days == na_unique[idx]]
+        f_convert = df_plot.iloc[0].CLOSE / df_plot2.iloc[0].CLOSE
+        df_plot2 = (df_plot2 * f_convert).round(2)
+
+        df_plot.index.name = None
+        df_plot = (df_plot-df_plot.shift()).cumsum()
+
+        df_plot2.index.name = None
+        df_plot2 = (df_plot2-df_plot2.shift()).cumsum()
+
+        l_last.append({'PETR4': df_plot.iloc[-1].CLOSE,
+                       'BOVA11': df_plot2.iloc[-1].CLOSE})
+
+        (df_plot.CLOSE * 100).plot(ax=ax, label='PETR4', legend=True)
+        (df_plot2.CLOSE * 100).plot(ax=ax, label='BOVA11', legend=True)
+        if idx in [0]:
+            ax.set_ylabel('cents', fontsize=12)
+        if idx in [0, 1, 2, 3]:
+            ax.set_xlabel('Time', fontsize=12)
+        ax.yaxis.set_major_locator(mticker.MaxNLocator(7))
+        ax.xaxis.set_major_locator(mticker.MaxNLocator(3))
+        ax.grid(axis='x')
+        ax.set_title('idx: {}'.format(l_idx[idx]), fontsize=12)
+
+    fig.tight_layout()
+    return pd.DataFrame(l_last)
