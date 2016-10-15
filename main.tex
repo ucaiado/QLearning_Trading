@@ -46,7 +46,7 @@ The dataset used in this project is also known as level I order book data\footno
 
 
 \subsection{Problem Statement}
-Algo trading\footnote{Source: \url{http://goo.gl/b9jAqE}} strategies usually are programs that follow a predefined set of instructions to place its orders. 
+Algo trading\footnote{Source: \url{http://goo.gl/b9jAqE}} strategies usually are programs that follow a predefined set of instructions to place its orders.
 
 The primary challenge to this approach is building these rules in a way that it can consistently generate profit without being too sensitive to market conditions. Thus, the goal of this project is to develop an adaptive learning model that can learn by itself those rules and trade a particular asset using reinforcement learning framework under an environment that replays historical high-frequency data.
 
@@ -71,7 +71,17 @@ Finally, as we shall justify latter, the performance of my agent will be compare
 In this section, I will explore the data set that will be used in the simulation, define and justify the inputs employed in the state representation of the algorithm, explain the reinforcement learning techniques used and describe the benchmark.
 
 \subsection{Data Exploration}
-The dataset used is composed by level I order book data from PETR4, a stock traded at BMFBovespa Stock Exchange. Includes 45 trading sessions from 07/25/2016 to 09/26/2016. I will use the first day to create the scalers of the features used, that I shall explain. Then, I will use four other days to train and test the model, and after each training session, I will validate the policy found in an unseen dataset from the subsequent day. The data was collected from Bloomberg. There are 45 files, each one has 110,000 rows on average, resulting in 5,631,273 rows at total and almost  230 MB of information. In the figure \ref{tab:original_data} is the structure of one of them:
+The dataset used is composed by level I order book data from PETR4, a stock traded at BMFBovespa Stock Exchange. Includes 45 trading sessions from 07/25/2016 to 09/26/2016. I will use the first day to create the scalers of the features used, that I shall explain. Then, I will use four other days to train and test the model, and after each training session, I will validate the policy found in an unseen dataset from the subsequent day.
+
+In the figure below can be observed how the market behaved on the days that the out-of-sample will be performed. In this charts are plotted the number of cents that an investment of the same amount of money in PETR4 and BOVA11 would have varied on these market sessions. BOVA11 is an ETF\footnote{Source: \url{https://en.wikipedia.org/wiki/Exchange-traded_fund}} that can be used as a proxy to the [Bovespa Index](https://goo.gl/TsuUVH), the Brazilian Stock Exchange Index. As can seem, PETR4 was relatively more volatile than the rest of the market.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.65\textwidth]{figures/market.png}
+\caption{\label{fig:market}Market and Stock Variation.}
+\end{figure}
+
+The data used in simulations was collected from Bloomberg. There are 45 files, each one has 110,000 rows on average, resulting in 5,631,273 rows at total and almost  230 MB of information. In the figure \ref{tab:original_data} is the structure of one of them:
 
 \begin{table}[ht!]
 \centering
@@ -186,7 +196,7 @@ Just like my learner, the set of action can change over time depending on the ag
 
 The performance will be measured primarily in the money made by the agents (that will be optimized by the learner). First, I will analyze if the learning agent was able to improve its performance on the same dataset after different trials. Later on, I will use the policy learned to simulate the learning agent behavior in a different dataset and then I will compare the final Profit and Loss of both agents. All data analyzed will be obtained by simulation.
 
-As the last reference, in the final section, we will compare the total return of the learner to a strategy of buy-and-hold in BOVA11. It is an ETF\footnote{Source: \url{https://en.wikipedia.org/wiki/Exchange-traded_fund}} that can be used as a proxy to the Bovespa Index\footnote{Source: \url{https://goo.gl/TsuUVH}}, the Brazilian Stock Exchange Index. We will use that to check if we are consistently beating the market and not just being profitable, as the Udacity reviewer noticed.
+As the last reference, in the final section, we will compare the total return of the learner to a strategy of buy-and-hold in BOVA11 and in the stock traded to check if we are consistently beating the market and not just being profitable, as the Udacity reviewer noticed.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% METHODOLOGY
@@ -312,7 +322,7 @@ Each training session will include data from the largest part of a trading sessi
 
 The agent will be allowed to take action every 2 seconds and, due to this delay, every time it decides to insert limit orders, it will place it 1 cent worst than the best price. So, if the best bid is $12.00$ and the best ask is $12.02$, if the agent chooses the action $BEST\_BOTH$, it should include a buy order at $11.99$ and a sell order at $12.03$. It will be allowed to cancel these orders after 2 seconds. However, if these orders are filled in the mean time, the environment will inform the agent so it can update its current position. Even though, it just will take new actions after passed those 2 seconds.
 
-One of the biggest complication of the approach proposed in this project was to find out a reasonable representation of the environment state that wasn't too big to visit each state-action pair sufficiently often but was still useful in the learning process. 
+One of the biggest complication of the approach proposed in this project was to find out a reasonable representation of the environment state that wasn't too big to visit each state-action pair sufficiently often but was still useful in the learning process.
 
 In the next subsection, I will try different configurations of $k$ and $\gamma$ to try to improve the performance of the learning agent over the same trial.
 
@@ -427,7 +437,7 @@ In this project, We have proposed the use of the reinforcement learning framewor
 \caption{\label{fig:optm_rand_several_days}Performance from Agents in different Days.}
 \end{figure}
 
-The chart above shows the accumulated return generated by the learning agent and by the random agent in four different days. Although the learning agent has not made money all the time, it still beat the performance of the random agent on the period of the tests.
+The chart above shows the accumulated return generated by the learning agent and by the random agent in four different days. Although the learning agent has not made money all the time, it still beat the performance of the random agent on the period of the tests. It also would have beaten a buy-and-hold strategy in BOVA11 and PETR4. Both would have lost money in the period, R\$ $-14,00$ and R\$ $-8,00$, respectively.
 
 To find the optimal policies used at each day we have used Q-Learning, a model-free approach to reinforcement learning. We trained the agent by simulating several runs on the same dataset, allowing the agent to explore the results of different actions on the same environment. So, we have back-tested the policy learned on the same dataset and found out that the policy learned not always converge to a better one. We noticed that this non-convergence could be related to the nature of our problem.
 
