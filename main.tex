@@ -406,7 +406,7 @@ In the figure \ref{fig:optimal_vs_random_pnl} we can see how much money each one
 \caption{\label{fig:optimal_vs_random_pnl}Performance from Leaning and Random Agent}
 \end{figure}
 
-The learning agent greatly outperforms the random agent, the chosen benchmark. Finally, in the figure \ref{fig:pnl_diff_days_compare} I am going to perform the same test using the datasets used in the previous subsection.
+A Welch's unequal variances t-test was conducted to compare if the PnL of the learner was greater than the PnL of a random agent. There was a significant difference between the performances (t-value $\approx 7.93$;  p-value $< 0.000$). These results suggest that learning agent really outperformed the random agent, the chosen benchmark. Finally, in the figure \ref{fig:pnl_diff_days_compare} I am going to perform the same test using the datasets used in the previous subsection.
 
 \begin{figure}[ht]
 \centering
@@ -414,7 +414,8 @@ The learning agent greatly outperforms the random agent, the chosen benchmark. F
 \caption{\label{fig:pnl_diff_days_compare}Performance from Agents in different Days.}
 \end{figure}
 
-In the dataset with index 26 and 36, the random agent outperformed the learning agent most the time, but at the end of these days, the learning agent was able to catch up the random agent performance. In the dataset with index 6, the learning agent outperformed the random agent by a large margin. Curiously, in the worst day of the test, the random agent also performed poorly, suggesting that it wasn't a problem of my agent, but something that has happened on the market.
+In the dataset with index 26 and 36, the random agent outperformed the learning agent most the time, but at the end of these days, the learning agent was able to catch up the random agent performance.
+On this days, the t-test also rejected that the PnL of the learner was greater than the PnL from the random agent. In the dataset with index 6, the learning agent outperformed the random agent by a large margin, also confirmed by the t-test (t-value $\approx 5.97$;  p-value $< 0.000$). Curiously, in the worst day of the test, the random agent also performed poorly, suggesting that it wasn't a problem of my agent, but something that has happened on the market.
 
 I believe these results are encouraging because they suggested that using the same learning framework on different days we can successfully find practical solutions that adapt well to new circumstances.
 
